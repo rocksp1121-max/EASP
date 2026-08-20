@@ -1,0 +1,2628 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/x-icon" href="images/easp.ico">
+<link rel="shortcut icon" type="image/x-icon" href="images/easp.ico">
+<title>EASP (수출 자동 출하 계획)</title>
+<style>
+/* ── LG Smart Font ── */
+@font-face {
+  font-family: 'LGSmart';
+  src: url('fonts/LGSmHaR_v1.4_151215.ttf') format('truetype'),
+       url('fonts/LGSmHaR_v1.4_151215.tff') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* ── Reset ── */
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'LGSmart','Malgun Gothic','Apple SD Gothic Neo',sans-serif;font-size:13px;background:#F1F5F9;color:#1E293B;height:100vh;overflow:hidden;}
+
+/* ── Header ── */
+.hdr{display:flex;align-items:center;height:48px;background:#1A1A1A;padding:0 20px;gap:24px;flex-shrink:0;}
+.hdr-logo{display:flex;align-items:center;gap:10px;}
+.hdr-logo .brand{color:#C0252D;font-weight:700;font-size:15px;letter-spacing:.5px;}
+.hdr-logo .title{color:#E2E8F0;font-size:13px;font-weight:600;}
+.hdr-logo .sep{color:#475569;font-size:16px;}
+.hdr-nav{display:flex;gap:4px;margin-left:8px;}
+.hdr-nav button{background:none;border:none;color:#94A3B8;padding:6px 16px;border-radius:4px;cursor:pointer;font-size:12.5px;font-family:inherit;transition:all .15s;}
+.hdr-nav button.active{background:#C0252D;color:#fff;font-weight:600;}
+.hdr-nav button:hover:not(.active){background:#2D3748;color:#E2E8F0;}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:14px;}
+.hdr-right .badge{color:#94A3B8;font-size:12px;display:flex;align-items:center;gap:5px;}
+.hdr-right .offline{background:#1E3A5F;color:#93C5FD;border:1px solid #2563EB;padding:3px 10px;border-radius:12px;font-size:11.5px;}
+.hdr-banner{display:flex;align-items:center;justify-content:center;gap:10px;padding:8px 16px;background:#FEF3C7;color:#92400E;border-bottom:1px solid #FCD34D;font-size:12px;font-weight:600;}
+.hdr-banner span{display:inline-block;}
+
+/* ── Layout ── */
+.layout{display:flex;height:calc(100vh - 48px - 30px);}   /* hdr 48 + deploy-banner 30 */
+
+/* ── Left Panel ── */
+.left{
+  width:370px;
+  background:#fff;
+  border-right:1px solid #E2E8F0;
+  display:flex;
+  flex-direction:column;
+  overflow-y:auto;
+  overflow-x:hidden;
+  flex-shrink:0;
+  transition:width .28s ease, opacity .2s ease, border-color .28s ease;
+}
+.left::-webkit-scrollbar{width:4px;}
+.left::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:2px;}
+
+/* ── Sidebar Toggle Tab ── */
+.sidebar-tab{
+  width:16px;
+  flex-shrink:0;
+  background:#fff;
+  border-right:1px solid #E2E8F0;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#CBD5E1;
+  font-size:12px;
+  user-select:none;
+  transition:background .12s, color .12s;
+  box-shadow:2px 0 5px rgba(0,0,0,.05);
+  z-index:5;
+}
+.sidebar-tab:hover{background:#FFF5F5;color:#C0252D;}
+.sidebar-tab .tab-arrow{transition:transform .28s ease;display:inline-block;line-height:1;}
+.sidebar-tab.closed .tab-arrow{transform:rotate(180deg);}
+
+.section{border-bottom:1px solid #F1F5F9;}
+.section-title{display:flex;align-items:center;gap:7px;font-weight:700;font-size:12.5px;color:#374151;margin-bottom:0;padding:11px 16px;cursor:pointer;user-select:none;transition:background .12s;}
+.section-title:hover{background:#F8FAFC;}
+.section-title .icon{color:#C0252D;}
+.section-title .chev{margin-left:auto;color:#94A3B8;font-size:11px;transition:transform .2s;display:inline-block;}
+.section-title.open .chev{transform:rotate(0deg);}
+.section-title.closed .chev{transform:rotate(-90deg);}
+.section-body{overflow:hidden;transition:max-height .25s ease,opacity .2s ease;padding:0 16px;}
+.section-body.open{opacity:1;}
+.section-body.closed{max-height:0!important;opacity:0;padding-top:0;padding-bottom:0;}
+.section-body-inner{padding-bottom:14px;}
+
+/* File Upload */
+.upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.upload-card{border:1.5px dashed #CBD5E1;border-radius:6px;padding:10px;text-align:center;cursor:pointer;transition:all .15s;background:#FAFAFA;user-select:none;}
+.upload-card:hover{border-color:#1D4ED8;background:#EFF6FF;transform:translateY(-1px);box-shadow:0 2px 4px rgba(0,0,0,.05);}
+.upload-card:active{transform:translateY(0);}
+.upload-card.loaded{border-color:#059669;border-style:solid;background:#F0FDF4;}
+.upload-card.loaded:hover{border-color:#1D4ED8;background:#EFF6FF;}
+.upload-card.running{border-color:#D97706;background:#FFFBEB;animation:pulse-border .8s ease-in-out infinite alternate;}
+.upload-card.missing{border-color:#CBD5E1;border-style:dashed;background:#FAFAFA;opacity:.7;}
+.upload-card.missing .uc-status{color:#94A3B8;}
+.upload-card .uc-icon{font-size:18px;margin-bottom:4px;}
+.upload-card .uc-label{font-size:11px;font-weight:700;color:#374151;}
+.upload-card .uc-status{font-size:10.5px;color:#64748B;margin-top:2px;}
+.upload-card.loaded .uc-status{color:#059669;}
+.raw-hint{font-size:10.5px;color:#94A3B8;margin-bottom:8px;text-align:center;padding:4px 0;background:#F8FAFC;border-radius:4px;}
+.raw-path-box{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;padding:8px 10px;margin-bottom:10px;}
+.rpb-row{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:11px;}
+.rpb-label{color:#64748B;font-weight:700;flex-shrink:0;}
+.rpb-path{flex:1;color:#1E293B;font-family:'Consolas',monospace;font-size:10.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rpb-used{flex:1;color:#1D4ED8;font-weight:700;}
+.rpb-btn{background:#fff;border:1px solid #CBD5E1;color:#475569;border-radius:4px;padding:3px 8px;font-size:10.5px;cursor:pointer;font-family:inherit;flex-shrink:0;}
+.rpb-btn:hover{background:#EFF6FF;border-color:#1D4ED8;color:#1D4ED8;}
+.btn-row{display:flex;gap:8px;margin-bottom:12px;}
+
+/* Data Count Cards */
+.count-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+.count-card{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;padding:8px 6px;text-align:center;}
+.count-card .cc-label{font-size:10.5px;color:#64748B;margin-bottom:3px;}
+.count-card .cc-value{font-size:18px;font-weight:700;color:#1E293B;}
+.count-card .cc-value.has-data{color:#C0252D;}
+.count-card.mst .cc-value{color:#2563EB;}
+.count-card.pink .cc-value{color:#9333EA;}
+
+/* STEP Buttons */
+.step-group{margin-bottom:10px;}
+.step-group-label{font-size:10.5px;color:#94A3B8;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;}
+.step-group-hint{font-size:10px;color:#94A3B8;text-align:center;margin-top:4px;}
+.btn-main{width:100%;border:none;padding:9px;border-radius:5px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:5px;display:flex;align-items:center;justify-content:center;gap:6px;transition:opacity .15s;}
+.btn-main:hover{opacity:.88;}
+.btn-main.blue{background:#1D4ED8;color:#fff;}
+.btn-main.green{background:#059669;color:#fff;}
+.btn-main.orange{background:#D97706;color:#fff;}
+.btn-sub-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.btn-sub{border:1px solid #E2E8F0;background:#F8FAFC;color:#374151;padding:6px 4px;border-radius:4px;font-size:11.5px;cursor:pointer;font-family:inherit;transition:all .15s;}
+.btn-sub:hover{background:#EFF6FF;border-color:#93C5FD;color:#1D4ED8;}
+
+/* ── Right Panel ── */
+.right{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+/* Main tab panels */
+.main-panel{display:flex;flex-direction:column;flex:1;overflow:hidden;}
+
+/* Sub tab panels */
+.sub-panel{display:flex;flex-direction:column;flex:1;overflow:hidden;}
+
+/* Placeholder panel (for tabs not yet implemented) */
+.placeholder-panel{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:10px;background:#F8FAFC;color:#94A3B8;
+}
+.ph-icon{font-size:48px;}
+.ph-title{font-size:16px;font-weight:700;color:#374151;}
+.ph-desc{font-size:12.5px;color:#94A3B8;}
+.ph-badge{
+  background:#F1F5F9;border:1px solid #E2E8F0;
+  border-radius:20px;padding:4px 14px;
+  font-size:11.5px;color:#64748B;font-weight:600;
+  margin-top:4px;
+}
+
+/* Toolbar */
+.toolbar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#fff;border-bottom:1px solid #E2E8F0;flex-shrink:0;}
+.toolbar-title{font-weight:700;font-size:13px;color:#1E293B;}
+.legend{display:flex;gap:10px;margin-left:8px;}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:11.5px;color:#475569;}
+.legend-dot{width:10px;height:10px;border-radius:2px;}
+.dot-white{background:#F1F5F9;border:1px solid #CBD5E1;}
+.dot-yellow{background:#FEF08A;border:1px solid #EAB308;}
+.dot-pink{background:#FBCFE8;border:1px solid #EC4899;}
+.dot-canary{background:#FDE68A;border:1px solid #F59E0B;}
+.toolbar-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.search-box{border:1px solid #E2E8F0;border-radius:4px;padding:5px 10px;font-size:12px;width:180px;font-family:inherit;}
+.search-box:focus{outline:none;border-color:#C0252D;}
+.filter-select{border:1px solid #E2E8F0;border-radius:4px;padding:5px 8px;font-size:12px;font-family:inherit;background:#fff;}
+.btn-refresh{background:#F1F5F9;border:1px solid #E2E8F0;border-radius:4px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;}
+.btn-refresh:hover{background:#E2E8F0;}
+
+/* Table */
+.table-wrap{flex:1;overflow:auto;}
+.table-wrap::-webkit-scrollbar{width:18px;height:18px;}
+.table-wrap::-webkit-scrollbar-thumb{background:#94A3B8;border-radius:9px;border:3px solid #F8FAFC;}
+.table-wrap::-webkit-scrollbar-thumb:hover{background:#64748B;}
+.table-wrap::-webkit-scrollbar-track{background:#F1F5F9;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead th{position:sticky;top:0;background:#F8FAFC;border-bottom:2px solid #E2E8F0;border-right:1px solid #E2E8F0;padding:8px 10px;text-align:left;font-weight:700;color:#475569;white-space:nowrap;}
+thead th:first-child{width:36px;text-align:center;}
+tbody td{border-bottom:1px solid #F1F5F9;border-right:1px solid #F1F5F9;padding:7px 10px;white-space:nowrap;}
+tbody tr:hover td{filter:brightness(.97);}
+tr.s-white td{background:#FFFFFF;}
+tr.s-yellow td{background:#FFFDE7;}
+tr.s-pink td{background:#FDF2F8;}
+tr.s-canary td{background:#FFFBEB;}
+.status-badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10.5px;font-weight:600;}
+.sb-white{background:#F1F5F9;color:#475569;border:1px solid #CBD5E1;}
+.sb-yellow{background:#FEF08A;color:#713F12;border:1px solid #EAB308;}
+.sb-pink{background:#FBCFE8;color:#86198F;border:1px solid #EC4899;}
+.sb-canary{background:#FDE68A;color:#78350F;border:1px solid #F59E0B;}
+td.num{text-align:right;}
+td.center{text-align:center;}
+.chk{accent-color:#C0252D;}
+/* 긴 텍스트 컬럼 말줄임 (42컬럼 MST 현황용) */
+.ell{display:inline-block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;}
+
+/* 인라인 편집 가능 셀 */
+tbody td.editable{cursor:text;position:relative;}
+tbody td.editable:hover{background:#FEF9C3!important;outline:1px dashed #CA8A04;outline-offset:-1px;}
+tbody td.editable input.cell-edit{width:100%;border:1.5px solid #1D4ED8;background:#fff;padding:2px 4px;font:inherit;color:#1E293B;outline:none;border-radius:2px;box-sizing:border-box;}
+
+/* ── 컬럼 재배치/표시 도구 ── */
+.col-tool{position:relative;}
+th.col-th{cursor:grab;user-select:none;}
+th.col-th .th-grip{color:#CBD5E1;margin-right:3px;font-size:10px;}
+th.col-th:hover .th-grip{color:#C0252D;}
+th.col-th.dragging{opacity:.4;}
+th.col-th.dragover{box-shadow:inset 3px 0 0 #C0252D;}
+.col-chooser{position:absolute;top:34px;right:0;width:280px;max-height:60vh;background:#fff;border:1px solid #CBD5E1;border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.16);z-index:50;display:none;flex-direction:column;overflow:hidden;}
+.col-chooser.open{display:flex;}
+.cc-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #F1F5F9;font-size:12.5px;font-weight:700;color:#374151;}
+.cc-reset{background:#F1F5F9;border:1px solid #E2E8F0;border-radius:4px;padding:3px 8px;font-size:11px;color:#475569;cursor:pointer;font-family:inherit;}
+.cc-reset:hover{background:#FFF5F5;border-color:#C0252D;color:#C0252D;}
+.cc-hint{padding:6px 12px;font-size:10.5px;color:#94A3B8;border-bottom:1px solid #F1F5F9;}
+.cc-list{overflow-y:auto;padding:4px 0;}
+.cc-item{display:flex;align-items:center;gap:8px;padding:5px 12px;font-size:12px;color:#334155;cursor:grab;border:1px solid transparent;}
+.cc-item:hover{background:#F8FAFC;}
+.cc-item.dragging{opacity:.4;}
+.cc-item.dragover{border-top:2px solid #C0252D;}
+.cc-item .cc-grip{color:#CBD5E1;font-size:11px;}
+.cc-item input{accent-color:#C0252D;}
+.cc-item .cc-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* ── 컬럼별 포함조건 필터행 ── */
+.filter-row th{position:sticky;top:33px;background:#fff;padding:3px 4px;border-bottom:1px solid #E2E8F0;border-right:1px solid #F1F5F9;z-index:1;}
+.col-filter{width:100%;min-width:54px;box-sizing:border-box;border:1px solid #E2E8F0;border-radius:3px;padding:2px 5px;font-size:11px;font-family:inherit;color:#334155;font-weight:400;}
+.col-filter::placeholder{color:#CBD5E1;}
+.col-filter:focus{outline:none;border-color:#C0252D;background:#fff;}
+.col-filter.active{background:#FFF7ED;border-color:#F59E0B;}
+
+/* ── 최적화 탭: 컨테이너 카드 ── */
+.opt-legend{padding:6px 16px;font-size:11.5px;color:#64748B;background:#F8FAFC;border-bottom:1px solid #E2E8F0;}
+#opt-cards{padding:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px;align-content:start;}
+.cntr-card{border:1px solid #E2E8F0;border-radius:8px;background:#fff;padding:10px 12px;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+.cntr-head{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:7px;}
+.cntr-gno{font-weight:700;font-size:12.5px;color:#1E293B;}
+.cntr-dest{background:#EFF6FF;color:#1D4ED8;border-radius:4px;padding:1px 7px;font-size:11.5px;font-weight:700;}
+.cntr-book{background:#ECFDF5;color:#059669;border:1px solid #BBF7D0;border-radius:4px;padding:1px 6px;font-size:10.5px;font-weight:600;}
+.cntr-spec{background:#F1F5F9;color:#475569;border-radius:4px;padding:1px 6px;font-size:11px;}
+.cntr-mix{background:#FAF5FF;color:#9333EA;border:1px solid #E9D5FF;border-radius:4px;padding:1px 6px;font-size:10.5px;font-weight:700;}
+.cntr-mix.cntr-c1{background:#EFF6FF;color:#1D4ED8;border-color:#BFDBFE;}    /* Case1 = CBM 청색 */
+.cntr-mix.cntr-c2{background:#FAF5FF;color:#9333EA;border-color:#E9D5FF;}    /* Case2 = DeadSpace 보라 */
+.cntr-mix.cntr-cs{background:#F1F5F9;color:#475569;border-color:#CBD5E1;}    /* Single 회색 */
+.cntr-fill{margin-left:auto;font-weight:700;font-size:12px;}
+.cntr-bar{height:6px;background:#F1F5F9;border-radius:3px;overflow:hidden;margin-bottom:8px;}
+.cntr-bar-in{height:100%;border-radius:3px;transition:width .3s;}
+.cntr-lines{display:flex;flex-direction:column;gap:2px;max-height:160px;overflow-y:auto;}
+.cc-line{display:flex;align-items:center;gap:6px;font-size:11.5px;padding:2px 0;border-bottom:1px solid #F8FAFC;}
+.cc-line .cc-model{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#334155;font-weight:600;}
+.cc-line .cc-so{color:#94A3B8;font-size:10.5px;flex-shrink:0;}
+.cc-line .cc-qty{color:#D97706;font-weight:700;flex-shrink:0;min-width:36px;text-align:right;}
+
+/* ── 최적화 탭: 3-pane (좌:INST리스트 / 우상:상세 / 우하:3D) ── */
+.opt-3pane{display:grid;grid-template-columns:300px 1fr;flex:1;overflow:hidden;min-height:0;}
+.opt-left{border-right:1px solid #E2E8F0;background:#F8FAFC;display:flex;flex-direction:column;overflow:hidden;}
+.opt-left-hd{padding:8px 12px;font-size:11px;color:#475569;background:#fff;border-bottom:1px solid #E2E8F0;font-weight:700;letter-spacing:.3px;display:flex;align-items:center;gap:6px;}
+.opt-left-hd .ct{margin-left:auto;background:#F1F5F9;color:#475569;border-radius:10px;padding:1px 8px;font-size:10.5px;font-weight:600;}
+.opt-left-list{flex:1;overflow-y:auto;padding:6px;}
+.inst-item{display:flex;align-items:center;gap:7px;padding:8px 10px;border:1px solid #E2E8F0;border-radius:6px;background:#fff;margin-bottom:5px;cursor:pointer;transition:all .12s;}
+.inst-item:hover{border-color:#A50034;box-shadow:0 1px 4px rgba(165,0,52,.1);}
+.inst-item.sel{border-color:#A50034;background:#FEF2F2;box-shadow:0 1px 4px rgba(165,0,52,.18);}
+.inst-no{font-weight:700;color:#1E293B;font-size:12.5px;min-width:54px;}
+.inst-dest{background:#EFF6FF;color:#1D4ED8;border-radius:4px;padding:1px 6px;font-size:10.5px;font-weight:700;}
+.inst-spec{background:#F1F5F9;color:#475569;border-radius:4px;padding:1px 6px;font-size:10px;}
+.inst-fill{margin-left:auto;font-size:11px;font-weight:700;}
+.opt-right{display:grid;grid-template-rows:1fr 1fr;overflow:hidden;min-width:0;}
+.opt-right-top{border-bottom:1px solid #E2E8F0;overflow:auto;padding:12px 16px;background:#fff;}
+.opt-right-bot{background:#0F172A;overflow:hidden;position:relative;}
+.opt-detail-empty{color:#94A3B8;font-size:13px;text-align:center;padding:40px 0;}
+.detail-hd{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+.detail-hd .dt-gno{font-size:15px;font-weight:700;color:#1E293B;}
+.detail-hd .dt-tag{background:#F1F5F9;color:#475569;border-radius:4px;padding:1px 7px;font-size:11px;}
+.detail-hd .dt-dest{background:#EFF6FF;color:#1D4ED8;border-radius:4px;padding:1px 7px;font-size:11px;font-weight:700;}
+.detail-hd .dt-fill{margin-left:auto;font-size:12px;font-weight:700;}
+.detail-tbl{width:100%;border-collapse:collapse;font-size:11.5px;}
+.detail-tbl th{background:#F8FAFC;color:#475569;text-align:left;padding:6px 8px;border-bottom:1px solid #E2E8F0;font-weight:600;font-size:10.5px;letter-spacing:.3px;}
+.detail-tbl td{padding:6px 8px;border-bottom:1px solid #F1F5F9;color:#334155;}
+.detail-tbl td.tdqty{color:#D97706;font-weight:700;text-align:right;}
+.opt-3d-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#94A3B8;font-size:13px;flex-direction:column;gap:6px;}
+.opt-3d-ph .ph-sub{font-size:11px;opacity:.65;}
+#panel-optimize{display:flex;flex-direction:column;}
+
+/* ── 운영 대시보드 (결과 출력 탭) ── */
+.dash-toolbar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:#fff;border-bottom:1px solid #E2E8F0;}
+.dash-hint{font-size:11.5px;color:#94A3B8;}
+.dash-body{flex:1;overflow-y:auto;padding:14px;background:#F8FAFC;}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px;}
+.kpi-card{background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:10px 14px;box-shadow:0 1px 2px rgba(0,0,0,.03);}
+.kpi-label{font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:.4px;}
+.kpi-value{font-size:22px;font-weight:700;color:#1E293B;margin-top:3px;}
+.kpi-sub{font-size:11px;color:#94A3B8;margin-top:2px;}
+.kpi-card.red .kpi-value{color:#DC2626;}
+.kpi-card.amber .kpi-value{color:#D97706;}
+.kpi-card.green .kpi-value{color:#059669;}
+.kpi-card.blue  .kpi-value{color:#1D4ED8;}
+.kpi-card.purple .kpi-value{color:#7C3AED;}
+
+.dash-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media (max-width:1100px){.dash-cols{grid-template-columns:1fr;}}
+.dash-card{background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:12px 14px;margin-bottom:14px;}
+.dash-card h3{font-size:12.5px;font-weight:700;color:#1E293B;margin:0 0 10px 0;display:flex;align-items:center;gap:6px;}
+.dash-card .ct{margin-left:auto;font-size:11px;color:#64748B;font-weight:600;background:#F1F5F9;border-radius:10px;padding:1px 8px;}
+.dash-card .dl{margin-left:6px;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;border-radius:4px;padding:1px 6px;font-size:10.5px;font-weight:600;cursor:pointer;font-family:inherit;}
+.dash-card .dl:hover{background:#1D4ED8;color:#fff;border-color:#1D4ED8;}
+.carrier-form{display:flex;gap:6px;align-items:center;}
+.carrier-form input{flex:1;border:1px solid #E2E8F0;border-radius:4px;padding:5px 8px;font-size:11.5px;font-family:inherit;}
+.carrier-form input:focus{outline:none;border-color:#1D4ED8;}
+.carrier-form button{background:#059669;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;}
+.carrier-form button:hover{background:#047857;}
+
+/* ── MST 관리 탭: 기준정보 CRUD ── */
+.ref-toolbar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#fff;border-bottom:1px solid #E2E8F0;flex-shrink:0;}
+.ref-count{font-size:11.5px;color:#64748B;background:#F1F5F9;border-radius:10px;padding:1px 8px;font-weight:600;}
+.ref-add{display:flex;gap:6px;align-items:center;padding:8px 16px;background:#F8FAFC;border-bottom:1px solid #E2E8F0;flex-shrink:0;}
+.ref-add input{flex:1;border:1px solid #E2E8F0;border-radius:4px;padding:5px 8px;font-size:12px;font-family:inherit;}
+.ref-add input:focus{outline:none;border-color:#1D4ED8;}
+.ref-add button{background:#059669;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;}
+.ref-add button:hover{background:#047857;}
+.ref-add .ref-add-label{font-size:11px;color:#64748B;font-weight:700;flex-shrink:0;}
+#panel-mst .table-wrap{flex:1;overflow:auto;}
+#panel-mst tbody td{padding:6px 10px;}
+.btn-del{background:#FEE2E2;color:#B91C1C;border:1px solid #FECACA;border-radius:4px;padding:2px 8px;font-size:10.5px;font-weight:700;cursor:pointer;font-family:inherit;}
+.btn-del:hover{background:#DC2626;color:#fff;}
+.dash-card .ct.red{background:#FEE2E2;color:#B91C1C;}
+.dash-card .ct.amber{background:#FEF3C7;color:#92400E;}
+
+.bar-row{display:flex;align-items:center;gap:8px;font-size:11.5px;padding:3px 0;}
+.bar-label{flex:0 0 110px;color:#475569;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bar-track{flex:1;background:#F1F5F9;border-radius:3px;height:8px;overflow:hidden;}
+.bar-fill{height:100%;background:#1D4ED8;border-radius:3px;}
+.bar-val{flex:0 0 50px;color:#1E293B;font-weight:600;text-align:right;}
+
+.chip-list{display:flex;flex-wrap:wrap;gap:5px;max-height:120px;overflow-y:auto;}
+.chip{display:inline-block;background:#FEE2E2;color:#B91C1C;border:1px solid #FECACA;border-radius:4px;padding:2px 7px;font-size:11.5px;font-weight:600;}
+.chip.amber{background:#FEF3C7;color:#92400E;border-color:#FDE68A;}
+.chip.slate{background:#F1F5F9;color:#475569;border-color:#E2E8F0;}
+
+.dash-list{max-height:260px;overflow-y:auto;}
+.dash-list table{width:100%;font-size:11.5px;border-collapse:collapse;}
+.dash-list th,.dash-list td{padding:4px 6px;border-bottom:1px solid #F1F5F9;text-align:left;white-space:nowrap;}
+.dash-list th{background:#F8FAFC;color:#475569;font-weight:700;position:sticky;top:0;}
+.dash-list td.num{text-align:right;}
+.dash-list td.fill-low{color:#DC2626;font-weight:700;}
+.dash-list td.fill-mid{color:#D97706;}
+.dash-list .row-critical td{background:#FFFBEB;}
+.dash-list .row-critical{cursor:pointer;transition:background .12s;}
+.dash-list .row-critical:hover td{background:#FEF3C7;}
+@keyframes rowFlash{0%{background:#FEF08A!important;}100%{background:transparent;}}
+#mst-tbody tr.row-flash td{animation:rowFlash 2.2s ease-out;}
+
+/* Empty state */
+.table-empty{
+  text-align:center;padding:40px;color:#94A3B8;font-size:13px;
+}
+
+/* ── BA Parameter Section ── */
+.param-section{border-bottom:1px solid #F1F5F9;padding:14px 16px;}
+.param-row{display:flex;flex-direction:column;gap:6px;}
+.param-label{font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.4px;}
+.tag-input-wrap{display:flex;flex-wrap:wrap;gap:5px;padding:6px 8px;border:1.5px solid #E2E8F0;border-radius:6px;background:#FAFAFA;cursor:text;min-height:36px;align-items:center;transition:border-color .15s;}
+.tag-input-wrap:focus-within{border-color:#C0252D;background:#fff;}
+.ba-tag{display:inline-flex;align-items:center;gap:4px;background:#EFF6FF;border:1px solid #BFDBFE;color:#1D4ED8;border-radius:4px;padding:2px 7px;font-size:11.5px;font-weight:700;}
+.ba-tag .tag-del{cursor:pointer;color:#93C5FD;font-size:13px;line-height:1;border:none;background:none;padding:0;font-family:inherit;}
+.ba-tag .tag-del:hover{color:#C0252D;}
+.tag-real-input{border:none;outline:none;background:transparent;font-size:12px;font-family:inherit;color:#1E293B;min-width:60px;flex:1;}
+.tag-real-input::placeholder{color:#CBD5E1;}
+.param-hint{font-size:10.5px;color:#94A3B8;display:flex;align-items:center;gap:4px;}
+.btn-crawl{width:100%;border:none;padding:8px;border-radius:5px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s;background:#0F172A;color:#38BDF8;border:1px solid #1E3A5F;}
+.btn-crawl:hover{background:#1E293B;}
+.btn-crawl:disabled{opacity:.45;cursor:not-allowed;}
+.crawl-status{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:4px;font-size:11.5px;font-weight:600;}
+.crawl-status.idle{background:#F8FAFC;color:#64748B;border:1px solid #E2E8F0;}
+.crawl-status.running{background:#0C1A2E;color:#38BDF8;border:1px solid #1E3A5F;animation:pulse-border .8s ease-in-out infinite alternate;}
+.crawl-status.done{background:#F0FDF4;color:#059669;border:1px solid #BBF7D0;}
+.crawl-status.error{background:#FFF1F2;color:#E11D48;border:1px solid #FECDD3;}
+@keyframes pulse-border{from{border-color:#1E3A5F;}to{border-color:#38BDF8;}}
+
+/* Log Panel */
+.log-panel{height:130px;background:#0F172A;border-top:1px solid #1E293B;flex-shrink:0;overflow-y:auto;padding:8px 14px;transition:height .25s ease,padding .25s ease;}
+.log-panel::-webkit-scrollbar{width:4px;}
+.log-panel::-webkit-scrollbar-thumb{background:#334155;}
+.log-title{color:#475569;font-size:10.5px;font-weight:700;margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px;}
+.log-title:hover{color:#94A3B8;}
+.log-chev{display:inline-block;transition:transform .2s;font-size:11px;}
+.log-panel.collapsed{height:24px;padding:5px 14px;overflow:hidden;}
+.log-panel.collapsed #log-area{display:none;}
+.log-panel.collapsed .log-title{margin-bottom:0;}
+.log-panel.collapsed .log-chev{transform:rotate(-90deg);}
+.log-line{font-size:11.5px;font-family:'Consolas','Courier New',monospace;line-height:1.7;display:flex;gap:10px;}
+.log-time{color:#475569;flex-shrink:0;}
+.log-step{color:#60A5FA;flex-shrink:0;min-width:70px;}
+.log-msg{color:#94A3B8;}
+.log-msg.ok{color:#34D399;}
+.log-msg.err{color:#F87171;}
+.log-msg.warn{color:#FBBF24;}
+
+/* Tabs (right panel sub) */
+.right-tabs{display:flex;gap:0;border-bottom:1px solid #E2E8F0;background:#fff;flex-shrink:0;}
+.right-tab{padding:9px 18px;font-size:12.5px;cursor:pointer;border-bottom:2px solid transparent;color:#64748B;font-weight:600;transition:all .15s;}
+.right-tab.active{color:#C0252D;border-bottom-color:#C0252D;}
+.right-tab:hover:not(.active){color:#374151;}
+
+/* Summary bar */
+.summary-bar{display:flex;gap:12px;padding:8px 16px;background:#fff;border-bottom:1px solid #E2E8F0;flex-shrink:0;}
+.sum-card{display:flex;align-items:center;gap:6px;padding:4px 10px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:4px;}
+.sum-card-clickable{cursor:pointer;transition:background .15s,border-color .15s,transform .08s;user-select:none;}
+.sum-card-clickable:hover{background:#F1F5F9;border-color:#94A3B8;}
+.sum-card-clickable:active{transform:translateY(1px);}
+.sum-card-clickable.active{background:#1E293B;border-color:#1E293B;}
+.sum-card-clickable.active .sum-label,
+.sum-card-clickable.active .sum-value{color:#fff!important;}
+.sum-label{font-size:11px;color:#64748B;}
+.sum-value{font-size:13px;font-weight:700;color:#1E293B;}
+.sum-value.red{color:#C0252D;}
+.sum-value.blue{color:#2563EB;}
+.sum-value.purple{color:#7C3AED;}
+</style>
+</head>
+<body>
+
+<!-- ════════════════ HEADER ════════════════ -->
+<div class="hdr">
+  <div class="hdr-logo">
+    <img src="images/LX판토스_영문 CI_rw.png" alt="LX Pantos" style="height:28px;object-fit:contain;">
+    <span class="sep">|</span>
+    <svg class="title" width="540" height="34" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle">
+      <style>
+        .ttl { fill:#fff; font-family:'LGSmart',sans-serif; font-size:13px; font-weight:500; }
+        .cap { fill:#A50034; stroke:#fff; stroke-width:1.8; paint-order:stroke; font-weight:900; font-size:22px; }
+      </style>
+      <text x="0" y="25" class="ttl"><tspan class="cap">E</tspan>xport <tspan class="cap">A</tspan>uto <tspan class="cap">S</tspan>hipment <tspan class="cap">P</tspan>lanning&#160;&#160;(수출 자동 출하 계획)</text>
+    </svg>
+  </div>
+  <nav class="hdr-nav">
+    <button class="active" onclick="setTab(this,'data')">📋 DATA 준비</button>
+    <button onclick="setTab(this,'optimize')">⚙️ 최적화</button>
+    <button onclick="setTab(this,'mst')">📊 MST 관리</button>
+    <button onclick="setTab(this,'output')">🖥 운영 대시보드</button>
+  </nav>
+  <div class="hdr-right">
+    <span class="badge">🌐 한국어</span>
+    <span class="offline">⊙ 오프라인 사용 가능</span>
+  </div>
+</div>
+<div id="deploy-banner" class="hdr-banner">배포본 기준 실행 중 — dist/수출물동_자동화시스템 기준 · 기본 기능은 오프라인 실행 가능 / 포털 크롤링은 온라인 필요</div>
+
+<!-- ════════════════ LAYOUT ════════════════ -->
+<div class="layout">
+
+  <!-- ── LEFT PANEL ── -->
+  <div class="left" id="left-panel">
+
+    <!-- 크롤링 파라미터 -->
+    <div class="section" id="sec-crawl">
+      <div class="section-title open" onclick="toggleSection('sec-crawl')">
+        <span class="icon">🌐</span> Raw DATA — 포털 크롤링 (자동)
+        <span class="chev">▾</span>
+      </div>
+      <div class="section-body open" id="sec-crawl-body">
+        <div class="section-body-inner">
+          <div class="param-row">
+            <div class="param-label">BA 코드 <span style="font-size:10px;font-weight:400;color:#94A3B8;text-transform:none;">(Enter 또는 쉼표로 추가 · 복수 지정 가능)</span></div>
+            <div class="tag-input-wrap" id="ba-tag-wrap" onclick="document.getElementById('ba-input').focus()">
+              <input id="ba-input" class="tag-real-input" placeholder="예: DFZ" maxlength="10">
+            </div>
+            <div class="param-hint">
+              <span>💡</span>
+              <span id="ba-hint-text">BA 코드를 입력하세요. 추가된 코드 순서대로 순차 크롤링합니다.</span>
+            </div>
+          </div>
+          <div class="param-hint" style="padding-left:0;margin-top:8px;color:#475569;">
+            <span>⚠</span>
+            <span>기본 STEP/대시보드 기능은 오프라인으로 동작합니다. 포털 크롤링은 네트워크가 필요합니다.</span>
+          </div>
+          <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">
+            <button class="btn-crawl" id="btn-crawl" onclick="startCrawl()">
+              <span id="crawl-btn-icon">⬇</span>
+              <span id="crawl-btn-text">포털 데이터 크롤링 시작</span>
+            </button>
+            <div class="crawl-status idle" id="crawl-status-bar">
+              <span id="crawl-status-icon">○</span>
+              <span id="crawl-status-text">대기 중</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Raw 파일 입력 — 방식 1: 수동 폴더 -->
+    <div class="section" id="sec-raw">
+      <div class="section-title open" onclick="toggleSection('sec-raw')">
+        <span class="icon">📁</span> Raw DATA — 수동 폴더 투입
+        <span class="chev">▾</span>
+      </div>
+      <div class="section-body open" id="sec-raw-body">
+        <div class="section-body-inner">
+          <div class="raw-path-box">
+            <div class="rpb-row"><span class="rpb-label">📁 폴더</span><span class="rpb-path" id="raw-path">로딩 중…</span></div>
+            <div class="rpb-row">
+              <span class="rpb-label">📅 사용중</span>
+              <span class="rpb-used" id="raw-used">-</span>
+              <button class="rpb-btn" onclick="openRawFolder()" title="탐색기에서 폴더 열기">📁 폴더 열기</button>
+              <button class="rpb-btn" onclick="loadRawInfo()" title="파일 상태 다시 확인">↻</button>
+            </div>
+          </div>
+          <div class="raw-hint">아래 4종 파일을 폴더에 넣고 카드 클릭 → 해당 STEP 실행</div>
+          <div class="upload-grid">
+            <div class="upload-card loaded" id="uc-so" onclick="runStep('STEP1 SO')" title="클릭 → STEP1 SO Update 실행">
+              <div class="uc-icon">📄</div>
+              <div class="uc-label">STEP1 · SO</div>
+              <div class="uc-status">-</div>
+            </div>
+            <div class="upload-card loaded" id="uc-prod" onclick="runStep('STEP2 생산계획')" title="클릭 → STEP2 생산계획 실행">
+              <div class="uc-icon">🏭</div>
+              <div class="uc-label">STEP2 · 생산계획</div>
+              <div class="uc-status">-</div>
+            </div>
+            <div class="upload-card loaded" id="uc-stock" onclick="runStep('STEP3 재고')" title="클릭 → STEP3 재고 실행">
+              <div class="uc-icon">📦</div>
+              <div class="uc-label">STEP3 · 재고</div>
+              <div class="uc-status">-</div>
+            </div>
+            <div class="upload-card loaded" id="uc-book" onclick="runStep('STEP4 선복')" title="클릭 → STEP4 선복 실행">
+              <div class="uc-icon">🚢</div>
+              <div class="uc-label">STEP4 · 선복</div>
+              <div class="uc-status">-</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DATA 준비 현황 -->
+    <div class="section" id="sec-stat">
+      <div class="section-title open" onclick="toggleSection('sec-stat')">
+        <span class="icon">📊</span> DATA 준비 현황
+        <span class="chev">▾</span>
+      </div>
+      <div class="section-body open" id="sec-stat-body">
+        <div class="section-body-inner">
+          <div class="count-grid">
+            <div class="count-card">
+              <div class="cc-label">SO</div>
+              <div class="cc-value has-data">2,266</div>
+            </div>
+            <div class="count-card">
+              <div class="cc-label">생산계획</div>
+              <div class="cc-value has-data">6,830</div>
+            </div>
+            <div class="count-card">
+              <div class="cc-label">재고</div>
+              <div class="cc-value has-data">3,432</div>
+            </div>
+            <div class="count-card">
+              <div class="cc-label">선복</div>
+              <div class="cc-value has-data">427</div>
+            </div>
+            <div class="count-card">
+              <div class="cc-label">CNTR현황</div>
+              <div class="cc-value">0</div>
+            </div>
+            <div class="count-card mst">
+              <div class="cc-label">MST 전체</div>
+              <div class="cc-value">2,266</div>
+            </div>
+            <div class="count-card pink" style="grid-column:span 3">
+              <div class="cc-label">계획확정 (핑크)</div>
+              <div class="cc-value">489</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 실행 버튼 -->
+    <div class="section" id="sec-step">
+      <div class="section-title open" onclick="toggleSection('sec-step')">
+        <span class="icon">▶</span> STEP 실행
+        <span class="chev">▾</span>
+      </div>
+      <div class="section-body open" id="sec-step-body">
+        <div class="section-body-inner">
+          <div class="step-group">
+            <div class="step-group-label">DATA 준비 (STEP 1 ~ 4)</div>
+            <button class="btn-main blue" onclick="runStep('DATA Prep')">▶ DATA Prep (All Steps)</button>
+            <div class="step-group-hint">↑ 일괄 실행 · 개별 STEP은 위 Raw 카드 클릭</div>
+          </div>
+          <div class="step-group">
+            <div class="step-group-label">최적화 (STEP 5)</div>
+            <button class="btn-main green" onclick="runStep('Optimize')">▶ Optimize (Auto)</button>
+            <div class="btn-sub-grid">
+              <button class="btn-sub" onclick="runStep('STEP5 장입계획')">STEP5 장입계획</button>
+              <button class="btn-sub" style="visibility:hidden;"></button>
+            </div>
+          </div>
+          <div class="step-group">
+            <div class="step-group-label">결과 처리 (STEP 6 ~ 8)</div>
+            <button class="btn-main orange" onclick="runStep('Result Process')">▶ Result Process</button>
+            <div class="btn-sub-grid">
+              <button class="btn-sub" onclick="downloadResultTemplate()" title="ZWMRE50110.xlsx 양식 다운로드">STEP6 · 양식 발행</button>
+              <button class="btn-sub" onclick="runStep('STEP7 INST No.')">STEP7 INST No.</button>
+              <button class="btn-sub" style="grid-column:span 2" onclick="runStep('STEP8 완료처리')">STEP8 완료처리</button>
+            </div>
+          </div>
+          <div class="step-group">
+            <div class="step-group-label">기준 데이터 입력</div>
+            <button class="btn-main" style="background:#475569;color:#fff;" onclick="importDimensions()" title="SAP export(73컬럼) 다중 파일 업로드. Model 기준 incremental insert.">📐 모델 치수 import (LWH)</button>
+            <div class="step-group-hint" id="dim-stats-hint">치수 등록: <span id="dim-total-count">-</span> 모델</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /left -->
+
+  <!-- ── Sidebar Toggle Tab ── -->
+  <div class="sidebar-tab" id="sidebar-tab" onclick="toggleSidebar()" title="패널 접기/펼치기">
+    <span class="tab-arrow">‹</span>
+  </div>
+
+  <!-- ── RIGHT PANEL ── -->
+  <div class="right">
+
+    <!-- ══ 메인탭: DATA 준비 ══ -->
+    <div id="panel-data" class="main-panel">
+
+      <!-- 우측 서브탭 -->
+      <div class="right-tabs">
+        <div class="right-tab active" onclick="setRTab(this,'mst-view')">MST 현황</div>
+        <div class="right-tab" onclick="setRTab(this,'so-view')">SO 데이터</div>
+        <div class="right-tab" onclick="setRTab(this,'booking-view')">선복 현황</div>
+        <div class="right-tab" onclick="setRTab(this,'result-view')">장입계획 결과</div>
+      </div>
+
+      <!-- 서브탭: MST 현황 -->
+      <div id="view-mst-view" class="sub-panel">
+        <div class="summary-bar">
+          <div class="sum-card sum-card-clickable active" onclick="filterByStatus('all', this)" title="전체 표시"><span class="sum-label">전체</span><span class="sum-value" id="sum-total">2,266</span></div>
+          <div class="sum-card sum-card-clickable" onclick="filterByStatus('초기', this)" title="초기 상태만"><span class="sum-label">⬜ 초기</span><span class="sum-value" id="sum-white">322</span></div>
+          <div class="sum-card sum-card-clickable" onclick="filterByStatus('계획대상', this)" title="계획대상만"><span class="sum-label">🟡 계획대상</span><span class="sum-value red" id="sum-yellow">1,455</span></div>
+          <div class="sum-card sum-card-clickable" onclick="filterByStatus('계획확정', this)" title="계획확정만"><span class="sum-label">🩷 계획확정</span><span class="sum-value purple" id="sum-pink">489</span></div>
+          <div class="sum-card sum-card-clickable" onclick="filterByStatus('작업완료', this)" title="작업완료만"><span class="sum-label">🟨 작업완료</span><span class="sum-value blue" id="sum-canary">0</span></div>
+        </div>
+        <div class="toolbar">
+          <span class="toolbar-title">MST 마스터 데이터</span>
+          <div class="legend">
+            <div class="legend-item"><div class="legend-dot dot-white"></div>초기</div>
+            <div class="legend-item"><div class="legend-dot dot-yellow"></div>계획대상</div>
+            <div class="legend-item"><div class="legend-dot dot-pink"></div>계획확정</div>
+            <div class="legend-item"><div class="legend-dot dot-canary"></div>작업완료</div>
+          </div>
+          <div class="toolbar-right">
+            <select id="filter-select" class="filter-select">
+              <option>전체 상태</option>
+              <option>초기</option>
+              <option>계획대상</option>
+              <option>계획확정</option>
+              <option>작업완료</option>
+            </select>
+            <input id="search-box" class="search-box" placeholder="🔍  SO No. / Model 검색">
+            <button class="btn-refresh" onclick="refreshTable()">↻ 새로고침</button>
+            <button class="btn-refresh" onclick="downloadDataset('mst','MST 42컬럼')">📤 Excel</button>
+            <div class="col-tool">
+              <button class="btn-refresh" id="btn-col" onclick="toggleColChooser(event)">⚙ 컬럼</button>
+              <div class="col-chooser" id="col-chooser">
+                <div class="cc-head">
+                  <span>컬럼 표시 / 순서</span>
+                  <button class="cc-reset" onclick="resetLayout()">기본값으로 초기화</button>
+                </div>
+                <div class="cc-hint">☰ 드래그로 순서 변경 · 체크로 표시/숨김 · 자동 저장</div>
+                <div class="cc-list" id="cc-list"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead id="mst-thead"><!-- 42컬럼 동적 렌더링 --></thead>
+            <tbody id="mst-tbody"></tbody>
+          </table>
+        </div>
+      </div><!-- /view-mst-view -->
+
+      <!-- 서브탭: SO 데이터 -->
+      <div id="view-so-view" class="sub-panel" style="display:none">
+        <div class="toolbar">
+          <span class="toolbar-title">SO 데이터</span>
+          <div class="toolbar-right">
+            <input id="so-search-box" class="search-box" placeholder="🔍  SO No. / Dest 검색">
+            <button class="btn-refresh" onclick="downloadDataset('so','SO 집계')">📤 Excel</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th><input type="checkbox" class="chk" id="chk-so-all"></th>
+                <th>SO No.</th>
+                <th>F.Dest</th>
+                <th class="num">SO Qty 합계</th>
+                <th class="num">Rem Qty 합계</th>
+                <th class="num">Item 수</th>
+                <th>최초 RSD</th>
+                <th>부킹번호</th>
+                <th>ETD</th>
+              </tr>
+            </thead>
+            <tbody id="so-tbody"></tbody>
+          </table>
+        </div>
+      </div><!-- /view-so-view -->
+
+      <!-- 서브탭: 선복 현황 -->
+      <div id="view-booking-view" class="sub-panel" style="display:none">
+        <div class="toolbar">
+          <span class="toolbar-title">선복 현황</span>
+          <div class="toolbar-right">
+            <input id="book-search-box" class="search-box" placeholder="🔍  부킹번호 / Dest 검색">
+            <button class="btn-refresh" onclick="downloadDataset('booking','부킹 집계')">📤 Excel</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th><input type="checkbox" class="chk" id="chk-book-all"></th>
+                <th>부킹번호</th>
+                <th>ETD</th>
+                <th>주요 Dest</th>
+                <th class="num">SO 건수</th>
+                <th class="num">총 SO Qty</th>
+                <th class="num">총 장입수량</th>
+                <th class="num">총 컨대수</th>
+                <th>상태</th>
+              </tr>
+            </thead>
+            <tbody id="book-tbody"></tbody>
+          </table>
+        </div>
+      </div><!-- /view-booking-view -->
+
+      <!-- 서브탭: 장입계획 결과 -->
+      <div id="view-result-view" class="sub-panel" style="display:none">
+        <div class="toolbar">
+          <span class="toolbar-title">장입계획 결과</span>
+          <div class="toolbar-right">
+            <input id="result-search-box" class="search-box" placeholder="🔍  SO No. / Model 검색">
+            <button class="btn-refresh" onclick="downloadDataset('result','장입계획 결과')">📤 Excel</button>
+            <button class="btn-refresh" onclick="downloadResultTemplate()">📤 ZWMRE50110 (.xlsx)</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th><input type="checkbox" class="chk" id="chk-result-all"></th>
+                <th>SO No.</th>
+                <th>Item No.</th>
+                <th>Model</th>
+                <th>F.Dest</th>
+                <th>부킹번호</th>
+                <th>ETD</th>
+                <th class="num">SO Qty</th>
+                <th class="num">장입수량</th>
+                <th class="num">컨대수</th>
+                <th>상태</th>
+              </tr>
+            </thead>
+            <tbody id="result-tbody"></tbody>
+          </table>
+        </div>
+      </div><!-- /view-result-view -->
+
+      <!-- 로그 패널 (DATA 준비 탭 공용) -->
+      <div class="log-panel" id="log-panel" onclick="handleLogClick(event)">
+        <div class="log-title" title="클릭으로 접기/펴기"><span class="log-chev">▾</span>실행 로그</div>
+        <div id="log-area"></div>
+      </div>
+
+    </div><!-- /panel-data -->
+
+    <!-- ══ 메인탭: 최적화 (STEP5 장입계획) ══ -->
+    <div id="panel-optimize" class="main-panel" style="display:none">
+      <div class="summary-bar">
+        <div class="sum-card"><span class="sum-label">📦 컨테이너</span><span class="sum-value" id="opt-cntr">-</span></div>
+        <div class="sum-card"><span class="sum-label">수량 적재율</span><span class="sum-value blue" id="opt-fill">-</span></div>
+        <div class="sum-card"><span class="sum-label">CBM 적재율</span><span class="sum-value blue" id="opt-cbm">-</span></div>
+        <div class="sum-card"><span class="sum-label">Single</span><span class="sum-value" id="opt-single" style="color:#475569">-</span></div>
+        <div class="sum-card"><span class="sum-label">Case1·CBM</span><span class="sum-value" id="opt-case1" style="color:#2563EB">-</span></div>
+        <div class="sum-card"><span class="sum-label">Case2·Dead</span><span class="sum-value purple" id="opt-mixed">-</span></div>
+        <div class="toolbar-right" style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+          <input id="opt-search" class="search-box" placeholder="🔍 목적지 / 모델 검색" oninput="renderContainers()">
+          <button class="btn-refresh" onclick="downloadDataset('containers','컨테이너 적재')">📤 Excel</button>
+          <button class="btn-main green" style="width:auto;padding:7px 16px;margin:0;" onclick="runStep('Optimize')">▶ 장입계획 실행 (STEP5)</button>
+        </div>
+      </div>
+      <div class="opt-legend">ETD/마감 임박 우선 · F.Dest별 컨테이너 적재 · 빈 공간 혼적 채움 (휴리스틱)</div>
+      <div class="opt-3pane">
+        <div class="opt-left">
+          <div class="opt-left-hd">📋 예상 INST 리스트 <span class="ct" id="opt-inst-ct">0</span></div>
+          <div class="opt-left-list" id="opt-inst-list">
+            <div class="opt-detail-empty">STEP5 실행 후 컨테이너별 목록이 표시됩니다</div>
+          </div>
+        </div>
+        <div class="opt-right">
+          <div class="opt-right-top" id="opt-detail">
+            <div class="opt-detail-empty">좌측에서 INST를 선택하세요</div>
+          </div>
+          <div class="opt-right-bot" id="opt-3d">
+            <div class="opt-3d-ph">
+              <div>🧊 3D 컨테이너 뷰</div>
+              <div class="ph-sub">Three.js 통합 후 활성화됩니다 (Phase 2)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ 메인탭: MST 관리 (기준정보 CRUD) ══ -->
+    <div id="panel-mst" class="main-panel" style="display:none">
+      <div class="right-tabs">
+        <div class="right-tab active" onclick="setRefTab(this,'fdest')">F.dest → 지역</div>
+        <div class="right-tab" onclick="setRefTab(this,'carrier')">선사 → 코드</div>
+        <div class="right-tab" onclick="setRefTab(this,'country')">국가코드 → 지역</div>
+        <div class="right-tab" onclick="setRefTab(this,'transporter')">운송사</div>
+      </div>
+      <div class="ref-toolbar">
+        <span class="toolbar-title" id="ref-title">F.dest → 지역</span>
+        <span class="ref-count" id="ref-count">-</span>
+        <div class="toolbar-right" style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+          <input id="ref-search" class="search-box" placeholder="🔍 검색" oninput="renderRefTable()">
+          <button class="btn-refresh" onclick="loadRefTable(currentRefTable)">↻ 새로고침</button>
+        </div>
+      </div>
+      <div class="ref-add" id="ref-add-form"></div>
+      <div class="table-wrap"><table><thead id="ref-thead"></thead><tbody id="ref-tbody"></tbody></table></div>
+    </div>
+
+    <!-- ══ 메인탭: 결과 출력 (운영 대시보드) ══ -->
+    <div id="panel-output" class="main-panel" style="display:none">
+      <div class="dash-toolbar">
+        <span class="toolbar-title">운영 대시보드</span>
+        <span class="dash-hint" id="dash-hint">STEP 1~4(DATA 준비) 실행 후 결과가 표시됩니다</span>
+        <div class="toolbar-right" style="margin-left:auto;display:flex;gap:8px;">
+          <button class="btn-refresh" onclick="loadDashboard()">↻ 새로고침</button>
+          <button class="btn-refresh" onclick="downloadResultTemplate()">📤 ZWMRE50110 (.xlsx)</button>
+        </div>
+      </div>
+      <div id="dash-body" class="dash-body">
+        <div class="table-empty">대시보드를 불러오는 중…</div>
+      </div>
+    </div>
+    <!-- 가짜 닫힘 (placeholder 잔재 정리용) -->
+    <div style="display:none">
+        <div class="ph-badge">다음 업데이트에서 구현 예정</div>
+      </div>
+    </div>
+
+  </div><!-- /right -->
+</div><!-- /layout -->
+
+<!-- 실제 master 데이터 (키친 수출 표준 업무 master(LSP).xlsb MST 시트, 42컬럼) -->
+<script src="mst_data.js"></script>
+<!-- Three.js (오프라인 로컬 보관) — STEP5 최적화 탭 3D 시각화용 -->
+<script src="vendor/three/three.min.js"></script>
+<script src="vendor/three/OrbitControls.js"></script>
+<script>
+// ════════════════════════════════════════════
+//  MST DATA
+// ════════════════════════════════════════════
+// (미사용) 기존 mock 데이터 — 실제 데이터는 아래 MST_DATA(파생) 사용
+const _MOCK_DATA = [
+  {so:'110002130',item:'10',model:'RH10V9AV2WR.BBWPEPN',dest:'CNNKG',rsd:'2026-02-01',soQty:51,remQty:6,stock:6,prod:'',book:'CI260429-4',etd:'2026-05-20',loadQty:45,cntr:0.30,status:'pink'},
+  {so:'110002133',item:'10',model:'RH10V9AV2WR.BBWPEPN',dest:'CNNKG',rsd:'2026-01-18',soQty:204,remQty:6,stock:6,prod:'',book:'CI260429-4',etd:'2026-05-20',loadQty:198,cntr:1.31,status:'pink'},
+  {so:'110005216',item:'10',model:'TCWM2013CD3.ASSEELC',dest:'CAMIS',rsd:'2026-01-18',soQty:25,remQty:10,stock:0,prod:'',book:'2621TP501',etd:'2026-05-21',loadQty:15,cntr:0.18,status:'pink'},
+  {so:'110005216',item:'20',model:'TLD1840CEW9.ASSEECI',dest:'CAMIS',rsd:'2026-01-18',soQty:16,remQty:8,stock:6,prod:'',book:'2621TP501',etd:'2026-05-21',loadQty:8,cntr:0.09,status:'pink'},
+  {so:'110005216',item:'30',model:'TLD1840CGW.ASSEELC',dest:'CAMIS',rsd:'2026-01-18',soQty:15,remQty:10,stock:66,prod:'',book:'2621TP501',etd:'2026-05-21',loadQty:5,cntr:0.06,status:'pink'},
+  {so:'110007093',item:'4',model:'FH0C7FD3MS.ASSQKFS',dest:'FRFOS',rsd:'2026-01-24',soQty:6,remQty:1,stock:6,prod:'',book:'096KR1027903',etd:'2026-05-26',loadQty:5,cntr:0.06,status:'pink'},
+  {so:'110007240',item:'10',model:'WR-10W.ABWBTST',dest:'CNNKG',rsd:'2026-01-24',soQty:50,remQty:1,stock:0,prod:'',book:'CI260429-4',etd:'2026-05-20',loadQty:49,cntr:0.30,status:'pink'},
+  {so:'110007245',item:'10',model:'RH10W8ZVKP2.APBREAP',dest:'CNNKG',rsd:'2026-01-24',soQty:260,remQty:1,stock:1,prod:'',book:'CI260429-4',etd:'2026-05-20',loadQty:259,cntr:1.60,status:'pink'},
+  {so:'110007471',item:'9',model:'RV1329C7T.ASSQEEU',dest:'ESVLC',rsd:'2026-01-30',soQty:2,remQty:2,stock:229,prod:'',book:'096KR1027886',etd:'2026-05-26',loadQty:0,cntr:0,status:'yellow'},
+  {so:'110011216',item:'10',model:'DLGX6501B.ABLEEUS',dest:'USONT',rsd:'2026-03-24',soQty:17,remQty:17,stock:179,prod:'',book:'SELG71553300',etd:'2026-05-20',loadQty:0,cntr:0,status:'yellow'},
+  {so:'110011216',item:'20',model:'DLGX6501W.ABWEEUS',dest:'USONT',rsd:'2026-03-24',soQty:8,remQty:8,stock:68,prod:'',book:'SELG71553300',etd:'2026-05-20',loadQty:0,cntr:0,status:'yellow'},
+  {so:'110011216',item:'30',model:'DLG7001W.ABWEEUS',dest:'USONT',rsd:'2026-03-24',soQty:22,remQty:22,stock:19,prod:'',book:'SELG71553300',etd:'2026-05-20',loadQty:0,cntr:0,status:'yellow'},
+  {so:'110011216',item:'40',model:'DLGX8981V.ASSEEUS',dest:'USONT',rsd:'2026-03-24',soQty:6,remQty:6,stock:53,prod:'',book:'SELG71553300',etd:'2026-05-20',loadQty:0,cntr:0,status:'yellow'},
+  {so:'110011216',item:'50',model:'DLGX8601BE.AEBEEUS',dest:'USONT',rsd:'2026-03-24',soQty:14,remQty:14,stock:118,prod:'',book:'SELG71553300',etd:'2026-05-20',loadQty:0,cntr:0,status:'yellow'},
+  {so:'110011216',item:'60',model:'DLGX8601WE.AEWEEUS',dest:'USONT',rsd:'2026-03-24',soQty:18,remQty:18,stock:30,prod:'',book:'SELG71553300',etd:'2026-05-20',loadQty:0,cntr:0,status:'yellow'},
+  {so:'110013086',item:'2',model:'GCWM1069QD7.ASSEELC',dest:'CACNC',rsd:'2026-02-23',soQty:6,remQty:6,stock:5,prod:'',book:'2622TP501',etd:'2026-05-27',loadQty:0,cntr:0,status:'yellow'},
+  {so:'110016625',item:'10',model:'WKGX301HBA.ABLEEUS',dest:'USGVP',rsd:'2026-03-25',soQty:3,remQty:3,stock:66,prod:'',book:'2621TP1201',etd:'2026-05-18',loadQty:0,cntr:0,status:'yellow'},
+  {so:'110016625',item:'50',model:'WKG101HVA.ASSEEUS',dest:'USGVP',rsd:'2026-03-25',soQty:3,remQty:3,stock:40,prod:'',book:'2621TP1201',etd:'2026-05-18',loadQty:0,cntr:0,status:'yellow'},
+  {so:'110019983',item:'10',model:'WD405CB.BBSEEUS',dest:'USSOJ',rsd:'2026-04-19',soQty:120,remQty:120,stock:0,prod:'2026-05-19',book:'040600198961',etd:'2026-05-25',loadQty:0,cntr:0,status:'white'},
+  {so:'110021757',item:'10',model:'RHX1008NWK.BGWQKUK',dest:'GBLTT',rsd:'2026-04-19',soQty:10,remQty:10,stock:0,prod:'',book:'096KR1027902',etd:'2026-05-31',loadQty:0,cntr:0,status:'white'},
+  {so:'110021770',item:'10',model:'RHX7009TWB.BGWQKUK',dest:'GBLTT',rsd:'2026-04-19',soQty:1,remQty:1,stock:0,prod:'',book:'096KR1027902',etd:'2026-05-31',loadQty:0,cntr:0,status:'white'},
+  {so:'110021812',item:'10',model:'DK1W.ABWPEPN',dest:'CNNKG',rsd:'2026-04-26',soQty:936,remQty:936,stock:0,prod:'',book:'CI260429-4',etd:'2026-05-20',loadQty:0,cntr:0,status:'white'},
+  {so:'110022284',item:'10',model:'WDPS2B.ABLEEUS',dest:'USLAL',rsd:'2026-05-03',soQty:10,remQty:10,stock:0,prod:'',book:'096KR1026588',etd:'2026-05-26',loadQty:0,cntr:0,status:'white'},
+  {so:'110022552',item:'20',model:'WDP5B.ABLEEUS',dest:'USONT',rsd:'2026-05-31',soQty:25,remQty:25,stock:0,prod:'',book:'SELG71553300',etd:'2026-05-20',loadQty:0,cntr:0,status:'white'},
+  {so:'110022602',item:'20',model:'WDP5B.ABLEEUS',dest:'USP3K',rsd:'2026-05-10',soQty:25,remQty:25,stock:0,prod:'',book:'2621TP1201',etd:'2026-05-18',loadQty:0,cntr:0,status:'white'},
+];
+
+const STATUS_LABEL = {white:'초기',yellow:'계획대상',pink:'계획확정',canary:'작업완료'};
+const STATUS_CLASS  = {white:'sb-white',yellow:'sb-yellow',pink:'sb-pink',canary:'sb-canary'};
+const STATUS_MAP    = {'초기':'white','계획대상':'yellow','계획확정':'pink','작업완료':'canary'};
+
+// ════════════════════════════════════════════
+//  실제 MST 데이터 (mst_data.js: MST_HEADER 42컬럼 + MST_ROWS)
+// ════════════════════════════════════════════
+const CI = {};
+MST_HEADER.forEach((h, i) => { if (!(h in CI)) CI[h] = i; });
+const gcol = (row, name) => { const i = CI[name]; return (i == null || row[i] == null) ? '' : row[i]; };
+const statusOf = (row) => row[MST_HEADER.length];   // status는 42컬럼 다음(마지막) 원소
+
+const NUM_COLS  = new Set(['Item No','Request Batch','SO Qty','Remaining SO Qty','장입수량','CBM','컨대수','재고']);
+const LONG_COLS = new Set(['특이사항','리마크','Planner remark','SLM','SLMW','Ship to Party Name','모선명','Customer PO','Contract No']);
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+// dist 기존 SO/선복/결과 렌더 함수 호환용 14필드 객체 (실제 MST_ROWS에서 파생)
+function deriveMstRow(r) {
+  return {
+    so:String(gcol(r,'SO No')), item:String(gcol(r,'Item No')), model:String(gcol(r,'Model')),
+    dest:String(gcol(r,'F.Dest')), rsd:String(gcol(r,'RSD')),
+    soQty:Number(gcol(r,'SO Qty'))||0, remQty:Number(gcol(r,'Remaining SO Qty'))||0,
+    stock:Number(gcol(r,'재고'))||0, prod:String(gcol(r,'생산일자')),
+    book:String(gcol(r,'부킹번호')), etd:String(gcol(r,'ETD')),
+    loadQty:Number(gcol(r,'장입수량'))||0, cntr:Number(gcol(r,'컨대수'))||0,
+    status:statusOf(r)
+  };
+}
+const MST_DATA = MST_ROWS.map(deriveMstRow);
+
+// 서버(/api/mst)에서 받은 rows로 MST_ROWS·MST_DATA를 제자리 교체 (const 유지)
+function setMstRows(rows) {
+  MST_ROWS.length = 0; rows.forEach(r => MST_ROWS.push(r));
+  MST_DATA.length = 0; MST_ROWS.forEach(r => MST_DATA.push(deriveMstRow(r)));
+}
+
+// ════════════════════════════════════════════
+//  메인탭 전환
+// ════════════════════════════════════════════
+let _dashboardRefreshTimer = null;
+
+function scheduleDashboardRefresh(active) {
+  if (_dashboardRefreshTimer) {
+    clearInterval(_dashboardRefreshTimer);
+    _dashboardRefreshTimer = null;
+  }
+  if (!active) {
+    return;
+  }
+  _dashboardRefreshTimer = setInterval(() => {
+    const activeBtn = document.querySelector('.hdr-nav button.active');
+    if (activeBtn && activeBtn.textContent.includes('운영 대시보드')) {
+      loadDashboard();
+    }
+  }, 25000);
+}
+
+async function loadDeployInfo() {
+  const banner = document.getElementById('deploy-banner');
+  if (!banner) return;
+  try {
+    const res = await fetch('/api/version');
+    const data = await res.json();
+    if (data.ok) {
+      banner.innerHTML = `배포본 기준 실행 중 · ${data.deploy_dir} · Flask 앱 업데이트 ${new Date(data.last_modified * 1000).toLocaleString('ko-KR')}`;
+      return;
+    }
+    banner.textContent = '배포본 조회 실패 — 서버 정보를 확인하세요.';
+  } catch (e) {
+    banner.textContent = '배포본 서버 연결 실패 — run.bat 실행 후 다시 시도';
+  }
+}
+
+function setTab(btn, id) {
+  document.querySelectorAll('.hdr-nav button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.main-panel').forEach(p => p.style.display = 'none');
+  const panel = document.getElementById('panel-' + id);
+  if (panel) panel.style.display = '';
+  if (id === 'optimize') loadContainers();   // 최적화 탭 진입 시 컨테이너 결과 로드
+  if (id === 'output')   loadDashboard();    // 운영 대시보드 탭 진입 시 로드
+  if (id === 'mst')      loadRefTable(currentRefTable);   // MST 관리 탭 진입 시 기준정보 로드
+  scheduleDashboardRefresh(id === 'output');
+}
+
+// ════════════════════════════════════════════
+//  우측 서브탭 전환
+// ════════════════════════════════════════════
+function setRTab(el, id) {
+  document.querySelectorAll('.right-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.sub-panel').forEach(p => p.style.display = 'none');
+  const view = document.getElementById('view-' + id);
+  if (view) view.style.display = '';
+}
+
+// ════════════════════════════════════════════
+//  MST 테이블 렌더링
+// ════════════════════════════════════════════
+// ── 컬럼 레이아웃 상태 (순서 + 표시/숨김), localStorage 저장 ──
+const LAYOUT_KEY = 'mst_grid_layout_v1';
+const COL_N = MST_HEADER.length;             // 42
+let colOrder   = [...Array(COL_N).keys()];   // 표시 순서 (MST_HEADER 인덱스)
+let hiddenCols = new Set();                  // 숨긴 컬럼 인덱스
+let colFilters = {};                         // 컬럼별 포함조건 {컬럼인덱스: 입력문자열} (비저장)
+
+function loadLayout() {
+  try {
+    const s = JSON.parse(localStorage.getItem(LAYOUT_KEY) || 'null');
+    if (s && Array.isArray(s.order)) {
+      const valid = s.order.filter(i => Number.isInteger(i) && i >= 0 && i < COL_N);
+      const seen = new Set(valid);
+      // 저장된 순서 + 누락된 인덱스 보강(헤더 변경 대비)
+      colOrder = valid.concat([...Array(COL_N).keys()].filter(i => !seen.has(i)));
+      hiddenCols = new Set((s.hidden || []).filter(i => Number.isInteger(i) && i >= 0 && i < COL_N));
+    }
+  } catch (e) { /* 손상된 값 무시 → 기본 레이아웃 */ }
+}
+function saveLayout() {
+  localStorage.setItem(LAYOUT_KEY, JSON.stringify({ order: colOrder, hidden: [...hiddenCols] }));
+}
+function visibleCols() { return colOrder.filter(i => !hiddenCols.has(i)); }
+
+// 셀 렌더링: 컬럼명별 서식
+function mstCell(name, v) {
+  if (v === '' || v == null) return '<span style="color:#CBD5E1">-</span>';
+  if (name === 'Model')    return `<b>${esc(v)}</b>`;
+  if (name === '부킹번호')  return `<span style="color:#1D4ED8">${esc(v)}</span>`;
+  if (name === '장입수량' || name === '컨대수') return `<span style="color:#D97706;font-weight:600">${esc(v)}</span>`;
+  if (name === '재고')     return `<span style="color:${Number(v)>0?'#059669':'#94A3B8'}">${esc(v)}</span>`;
+  if (LONG_COLS.has(name)) return `<span class="ell" title="${esc(v)}">${esc(v)}</span>`;
+  return esc(v);
+}
+
+// 전체선택 (동적 헤더이므로 onchange 인라인 바인딩)
+function toggleAllRows(cb) {
+  document.querySelectorAll('#mst-tbody .row-chk').forEach(c => c.checked = cb.checked);
+}
+
+// 헤더: (1행) 체크박스 + 보이는 컬럼(드래그) + 상태  /  (2행) 컬럼별 포함조건 필터
+function renderMstHead() {
+  const vis = visibleCols();
+  // 1행: 헤더
+  const head = ['<th class="center"><input type="checkbox" class="chk" id="chk-all" onchange="toggleAllRows(this)"></th>'];
+  vis.forEach(i => {
+    const h = MST_HEADER[i];
+    head.push(`<th class="col-th ${NUM_COLS.has(h)?'num':''}" draggable="true" data-col="${i}" title="드래그하여 순서 변경"><span class="th-grip">⋮⋮</span>${esc(h)}</th>`);
+  });
+  head.push('<th>상태</th>');
+  // 2행: 컬럼별 포함조건 필터 입력
+  const filt = ['<th class="center"></th>'];
+  vis.forEach(i => {
+    const v = colFilters[i] ? esc(colFilters[i]) : '';
+    filt.push(`<th><input class="col-filter ${v?'active':''}" data-col="${i}" value="${v}" oninput="onColFilter(this)" placeholder="포함…"></th>`);
+  });
+  filt.push('<th></th>');
+  document.getElementById('mst-thead').innerHTML =
+    `<tr>${head.join('')}</tr><tr class="filter-row">${filt.join('')}</tr>`;
+  bindHeaderDrag();
+}
+
+// 컬럼별 포함조건 입력 핸들러
+function onColFilter(input) {
+  const i = input.dataset.col;
+  const v = input.value;
+  if (v.trim()) colFilters[i] = v; else delete colFilters[i];
+  input.classList.toggle('active', !!v.trim());
+  applyFilters();
+}
+
+// rows: MST_ROWS(42칸 배열 + 마지막 status) 형태
+// 인라인 편집 가능 컬럼 인덱스 (백엔드 PRESERVED_COLS와 일치)
+const EDITABLE_COLS = new Set([
+  MST_HEADER.indexOf('비고'),
+  MST_HEADER.indexOf('S'),
+  MST_HEADER.indexOf('특이사항'),
+  MST_HEADER.indexOf('작업번호(Inst No)'),
+  MST_HEADER.indexOf('CNTR NO'),
+  MST_HEADER.indexOf('작업일자'),
+]);
+
+function renderRows(rows) {
+  const vis = visibleCols();
+  // row → 원본 인덱스 빠른 룩업
+  const riMap = new Map();
+  MST_ROWS.forEach((r, i) => riMap.set(r, i));
+  return rows.map(r => {
+    const st = statusOf(r);
+    const ri = riMap.get(r);
+    const tds = ['<td class="center"><input type="checkbox" class="chk row-chk"></td>'];
+    vis.forEach(i => {
+      const h = MST_HEADER[i];
+      const editable = EDITABLE_COLS.has(i);
+      const cls = (NUM_COLS.has(h) ? 'num ' : '') + (editable ? 'editable' : '');
+      const attr = editable ? ` ondblclick="startEditCell(this, ${ri}, ${i})" title="더블클릭으로 편집"` : '';
+      tds.push(`<td class="${cls.trim()}"${attr}>${mstCell(h, r[i])}</td>`);
+    });
+    tds.push(`<td><span class="status-badge ${STATUS_CLASS[st]||''}">${STATUS_LABEL[st]||st}</span></td>`);
+    return `<tr class="s-${st}">${tds.join('')}</tr>`;
+  }).join('');
+}
+
+// 성능 상한: 너무 많은 행은 일부만 렌더 (검색으로 좁히도록 안내)
+const MAX_RENDER = 500;
+function renderRowsCapped(rows) {
+  let html = renderRows(rows.slice(0, MAX_RENDER));
+  if (rows.length > MAX_RENDER) {
+    const more = rows.length - MAX_RENDER;
+    html += `<tr><td colspan="${visibleCols().length + 2}" class="table-empty">… 외 ${more.toLocaleString()}건 더 있음 (성능상 ${MAX_RENDER}건만 표시 · 검색/필터로 좁혀보세요)</td></tr>`;
+  }
+  return html;
+}
+
+function renderTable() {
+  renderMstHead();
+  document.getElementById('mst-tbody').innerHTML = renderRowsCapped(MST_ROWS);
+}
+
+// 레이아웃 변경 후: 헤더 + (현재 검색/필터 유지한) 본문 재렌더
+function rerenderGrid() {
+  renderMstHead();
+  applyFilters();
+}
+
+// ── 헤더 드래그로 컬럼 순서 변경 ──
+let _dragColIdx = null;
+function bindHeaderDrag() {
+  document.querySelectorAll('#mst-thead th.col-th').forEach(th => {
+    th.addEventListener('dragstart', e => {
+      _dragColIdx = parseInt(th.dataset.col, 10);
+      th.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    th.addEventListener('dragend', () => {
+      th.classList.remove('dragging');
+      document.querySelectorAll('#mst-thead th.dragover').forEach(x => x.classList.remove('dragover'));
+    });
+    th.addEventListener('dragover', e => { e.preventDefault(); th.classList.add('dragover'); });
+    th.addEventListener('dragleave', () => th.classList.remove('dragover'));
+    th.addEventListener('drop', e => {
+      e.preventDefault();
+      th.classList.remove('dragover');
+      moveColumn(_dragColIdx, parseInt(th.dataset.col, 10));
+      _dragColIdx = null;
+    });
+  });
+}
+
+// from 컬럼을 to 컬럼 앞 위치로 이동
+function moveColumn(from, to) {
+  if (from == null || from === to) return;
+  const fromPos = colOrder.indexOf(from);
+  if (fromPos < 0) return;
+  colOrder.splice(fromPos, 1);
+  const toPos = colOrder.indexOf(to);
+  colOrder.splice(toPos < 0 ? colOrder.length : toPos, 0, from);
+  saveLayout();
+  rerenderGrid();
+  buildColChooser();
+}
+
+// ── 컬럼 chooser (표시/숨김 + 순서) ──
+function buildColChooser() {
+  const list = document.getElementById('cc-list');
+  if (!list) return;
+  list.innerHTML = colOrder.map(i => {
+    const h = MST_HEADER[i];
+    const checked = hiddenCols.has(i) ? '' : 'checked';
+    return `<label class="cc-item" draggable="true" data-col="${i}">
+      <span class="cc-grip">⋮⋮</span>
+      <input type="checkbox" ${checked} onchange="toggleColVisible(${i}, this.checked)">
+      <span class="cc-name" title="${esc(h)}">${esc(h)}</span>
+    </label>`;
+  }).join('');
+  bindChooserDrag();
+}
+
+function toggleColVisible(i, visible) {
+  if (visible) { hiddenCols.delete(i); }
+  else {
+    if (hiddenCols.size >= COL_N - 1) return;   // 최소 1개 컬럼은 유지
+    hiddenCols.add(i);
+  }
+  saveLayout();
+  rerenderGrid();
+}
+
+function toggleColChooser(e) {
+  e.stopPropagation();
+  const c = document.getElementById('col-chooser');
+  c.classList.toggle('open');
+  if (c.classList.contains('open')) buildColChooser();
+}
+
+// chooser 바깥 클릭 시 닫기
+document.addEventListener('click', e => {
+  const tool = document.querySelector('.col-tool');
+  if (tool && !tool.contains(e.target)) {
+    document.getElementById('col-chooser')?.classList.remove('open');
+  }
+});
+
+let _dragChooserIdx = null;
+function bindChooserDrag() {
+  document.querySelectorAll('#cc-list .cc-item').forEach(item => {
+    item.addEventListener('dragstart', e => {
+      _dragChooserIdx = parseInt(item.dataset.col, 10);
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      document.querySelectorAll('#cc-list .cc-item.dragover').forEach(x => x.classList.remove('dragover'));
+    });
+    item.addEventListener('dragover', e => { e.preventDefault(); item.classList.add('dragover'); });
+    item.addEventListener('dragleave', () => item.classList.remove('dragover'));
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      item.classList.remove('dragover');
+      moveColumn(_dragChooserIdx, parseInt(item.dataset.col, 10));
+      _dragChooserIdx = null;
+    });
+  });
+}
+
+function resetLayout() {
+  colOrder = [...Array(COL_N).keys()];
+  hiddenCols = new Set();
+  localStorage.removeItem(LAYOUT_KEY);
+  rerenderGrid();
+  buildColChooser();
+  addLog('SYSTEM', '컬럼 레이아웃을 기본값으로 초기화했습니다.', 'ok');
+}
+
+// ════════════════════════════════════════════
+//  검색 + 필터
+// ════════════════════════════════════════════
+function filterByStatus(status, cardEl) {
+  const fs = document.getElementById('filter-select');
+  if (!fs) return;
+  fs.value = status === 'all' ? '전체 상태' : status;
+  document.querySelectorAll('#view-mst-view .sum-card-clickable').forEach(c => c.classList.remove('active'));
+  if (cardEl) cardEl.classList.add('active');
+  applyFilters();
+}
+
+function applyFilters() {
+  const searchVal = document.getElementById('search-box').value.toLowerCase().trim();
+  const filterVal = document.getElementById('filter-select').value;
+
+  const colKeys = Object.keys(colFilters);
+  const filtered = MST_ROWS.filter(r => {
+    const so    = String(gcol(r,'SO No')).toLowerCase();
+    const model = String(gcol(r,'Model')).toLowerCase();
+    const matchSearch = !searchVal || so.includes(searchVal) || model.includes(searchVal);
+    const matchStatus = !filterVal || filterVal === '전체 상태' ||
+      statusOf(r) === STATUS_MAP[filterVal];
+    // 컬럼별 포함조건 (모두 만족 = AND)
+    const matchCols = colKeys.every(k =>
+      String(r[Number(k)] ?? '').toLowerCase().includes(colFilters[k].trim().toLowerCase()));
+    return matchSearch && matchStatus && matchCols;
+  });
+
+  const tbody = document.getElementById('mst-tbody');
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="${visibleCols().length + 2}" class="table-empty">검색 결과가 없습니다.</td></tr>`;
+  } else {
+    tbody.innerHTML = renderRowsCapped(filtered);
+  }
+  // 전체선택 해제
+  const chkAll = document.getElementById('chk-all');
+  if (chkAll) chkAll.checked = false;
+}
+
+// ════════════════════════════════════════════
+//  새로고침
+// ════════════════════════════════════════════
+function refreshTable() {
+  document.getElementById('search-box').value = '';
+  document.getElementById('filter-select').selectedIndex = 0;
+  colFilters = {};                 // 컬럼별 포함조건도 초기화
+  renderTable();
+  addLog('SYSTEM', '테이블 새로고침 완료', 'ok');
+}
+
+// ════════════════════════════════════════════
+//  전체선택 체크박스
+// ════════════════════════════════════════════
+// MST 현황 전체선택은 동적 헤더의 onchange="toggleAllRows(this)"로 처리됨
+
+// 동일 패턴: SO / 선복 / 결과 탭 전체선택
+['chk-so-all','chk-book-all','chk-result-all'].forEach(id => {
+  document.getElementById(id).addEventListener('change', function () {
+    const tbody = this.closest('table').querySelector('tbody');
+    tbody.querySelectorAll('.chk').forEach(c => c.checked = this.checked);
+  });
+});
+
+// ════════════════════════════════════════════
+//  SO 데이터 탭 렌더링 (SO별 집계)
+// ════════════════════════════════════════════
+function renderSoTable(filterText) {
+  const soMap = {};
+  MST_DATA.forEach(r => {
+    if (!soMap[r.so]) soMap[r.so] = {so:r.so, dest:r.dest, soQty:0, remQty:0, items:0, rsd:r.rsd, book:r.book, etd:r.etd};
+    soMap[r.so].soQty  += r.soQty;
+    soMap[r.so].remQty += r.remQty;
+    soMap[r.so].items  += 1;
+  });
+  let rows = Object.values(soMap);
+  if (filterText) {
+    const kw = filterText.toLowerCase();
+    rows = rows.filter(r => r.so.toLowerCase().includes(kw) || r.dest.toLowerCase().includes(kw));
+  }
+  const tbody = document.getElementById('so-tbody');
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" class="table-empty">검색 결과가 없습니다.</td></tr>`;
+    return;
+  }
+  const CAP = 500;
+  tbody.innerHTML = rows.slice(0, CAP).map(r => `
+    <tr class="s-white">
+      <td class="center"><input type="checkbox" class="chk"></td>
+      <td><b>${r.so}</b></td>
+      <td>${r.dest}</td>
+      <td class="num">${r.soQty.toLocaleString()}</td>
+      <td class="num">${r.remQty.toLocaleString()}</td>
+      <td class="num">${r.items}</td>
+      <td>${r.rsd}</td>
+      <td style="color:${r.book?'#1D4ED8':'#94A3B8'}">${r.book||'-'}</td>
+      <td>${r.etd||'-'}</td>
+    </tr>`).join('')
+    + (rows.length > CAP ? `<tr><td colspan="9" class="table-empty">… 외 ${(rows.length-CAP).toLocaleString()}건 (검색으로 좁혀보세요)</td></tr>` : '');
+}
+
+// ════════════════════════════════════════════
+//  선복 현황 탭 렌더링 (부킹번호별 집계)
+// ════════════════════════════════════════════
+function renderBookingTable(filterText) {
+  const bookMap = {};
+  MST_DATA.forEach(r => {
+    const key = r.book || '(미지정)';
+    if (!bookMap[key]) bookMap[key] = {book:key, etd:r.etd, dest:r.dest, count:0, soQty:0, loadQty:0, cntr:0};
+    bookMap[key].count   += 1;
+    bookMap[key].soQty   += r.soQty;
+    bookMap[key].loadQty += r.loadQty;
+    bookMap[key].cntr    += r.cntr;
+  });
+  let rows = Object.values(bookMap);
+  if (filterText) {
+    const kw = filterText.toLowerCase();
+    rows = rows.filter(r => r.book.toLowerCase().includes(kw) || r.dest.toLowerCase().includes(kw));
+  }
+  const tbody = document.getElementById('book-tbody');
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" class="table-empty">검색 결과가 없습니다.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(r => {
+    const isLoaded = r.loadQty > 0;
+    return `
+    <tr class="s-${isLoaded?'pink':'white'}">
+      <td class="center"><input type="checkbox" class="chk"></td>
+      <td style="color:#1D4ED8;font-weight:700">${r.book}</td>
+      <td>${r.etd||'-'}</td>
+      <td>${r.dest}</td>
+      <td class="num">${r.count}</td>
+      <td class="num">${r.soQty.toLocaleString()}</td>
+      <td class="num" style="color:${isLoaded?'#D97706':'#94A3B8'}">${r.loadQty.toLocaleString()}</td>
+      <td class="num" style="color:${isLoaded?'#D97706':'#94A3B8'}">${r.cntr.toFixed(2)}</td>
+      <td><span class="status-badge ${isLoaded?'sb-pink':'sb-white'}">${isLoaded?'장입있음':'미장입'}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════
+//  장입계획 결과 탭 렌더링 (loadQty > 0)
+// ════════════════════════════════════════════
+function renderResultTable(filterText) {
+  let rows = MST_DATA.filter(r => r.loadQty > 0);
+  if (filterText) {
+    const kw = filterText.toLowerCase();
+    rows = rows.filter(r => r.so.toLowerCase().includes(kw) || r.model.toLowerCase().includes(kw));
+  }
+  const tbody = document.getElementById('result-tbody');
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="11" class="table-empty">장입계획이 수립된 항목이 없습니다.</td></tr>`;
+    return;
+  }
+  const CAP = 500;
+  tbody.innerHTML = rows.slice(0, CAP).map(r => `
+    <tr class="s-${r.status}">
+      <td class="center"><input type="checkbox" class="chk"></td>
+      <td>${r.so}</td>
+      <td>${r.item}</td>
+      <td><b>${r.model}</b></td>
+      <td>${r.dest}</td>
+      <td style="color:#1D4ED8">${r.book||'-'}</td>
+      <td>${r.etd||'-'}</td>
+      <td class="num">${r.soQty.toLocaleString()}</td>
+      <td class="num" style="color:#D97706;font-weight:700">${r.loadQty.toLocaleString()}</td>
+      <td class="num" style="color:#D97706">${r.cntr.toFixed(2)}</td>
+      <td><span class="status-badge ${STATUS_CLASS[r.status]}">${STATUS_LABEL[r.status]}</span></td>
+    </tr>`).join('')
+    + (rows.length > CAP ? `<tr><td colspan="11" class="table-empty">… 외 ${(rows.length-CAP).toLocaleString()}건 (검색으로 좁혀보세요)</td></tr>` : '');
+}
+
+// 서브탭 전환 시 해당 탭 데이터 렌더링
+const _origSetRTab = setRTab;
+// 서브탭 변경 이벤트: 탭 전환 시 각 탭 렌더링
+document.querySelectorAll('.right-tab').forEach(tab => {
+  tab.addEventListener('click', function () {
+    const id = this.getAttribute('onclick').match(/'([^']+)'\)/)?.[1];
+    if (id === 'so-view')      renderSoTable('');
+    if (id === 'booking-view') renderBookingTable('');
+    if (id === 'result-view')  renderResultTable('');
+  });
+});
+
+// 서브탭 내 검색
+document.getElementById('so-search-box').addEventListener('input', function () {
+  renderSoTable(this.value.trim());
+});
+document.getElementById('book-search-box').addEventListener('input', function () {
+  renderBookingTable(this.value.trim());
+});
+document.getElementById('result-search-box').addEventListener('input', function () {
+  renderResultTable(this.value.trim());
+});
+
+// ════════════════════════════════════════════
+//  사이드바 전체 접기 / 펼치기
+// ════════════════════════════════════════════
+const SIDEBAR_KEY = 'sidebar_open';
+let _sidebarOpen = true;
+
+function toggleSidebar() {
+  _sidebarOpen ? _closeSidebar(true) : _openSidebar(true);
+}
+function _closeSidebar(animate) {
+  const panel = document.getElementById('left-panel');
+  const tab   = document.getElementById('sidebar-tab');
+  if (!animate) panel.style.transition = 'none';
+  panel.style.width           = '0';
+  panel.style.minWidth        = '0';
+  panel.style.opacity         = '0';
+  panel.style.pointerEvents   = 'none';
+  panel.style.borderRightColor = 'transparent';
+  panel.style.overflowY       = 'hidden';
+  tab.classList.add('closed');
+  if (!animate) requestAnimationFrame(() => { panel.style.transition = ''; });
+  _sidebarOpen = false;
+  localStorage.setItem(SIDEBAR_KEY, '0');
+}
+function _openSidebar(animate) {
+  const panel = document.getElementById('left-panel');
+  const tab   = document.getElementById('sidebar-tab');
+  if (!animate) panel.style.transition = 'none';
+  panel.style.width           = '370px';
+  panel.style.minWidth        = '';
+  panel.style.opacity         = '1';
+  panel.style.pointerEvents   = '';
+  panel.style.borderRightColor = '';
+  panel.addEventListener('transitionend', function onEnd(e) {
+    if (e.propertyName === 'width') {
+      panel.style.overflowY = '';
+      panel.removeEventListener('transitionend', onEnd);
+    }
+  });
+  tab.classList.remove('closed');
+  if (!animate) requestAnimationFrame(() => { panel.style.transition = ''; });
+  _sidebarOpen = true;
+  localStorage.setItem(SIDEBAR_KEY, '1');
+}
+function initSidebar() {
+  if (localStorage.getItem(SIDEBAR_KEY) === '0') _closeSidebar(false);
+}
+
+// ════════════════════════════════════════════
+//  섹션 접기 / 펼치기
+// ════════════════════════════════════════════
+const SEC_IDS = ['sec-crawl','sec-raw','sec-stat','sec-step'];
+const SEC_STORAGE_KEY = 'sec_open_state';
+
+function getSavedState() {
+  try { const s = localStorage.getItem(SEC_STORAGE_KEY); return s ? JSON.parse(s) : null; }
+  catch { return null; }
+}
+function initSections() {
+  const saved = getSavedState();
+  SEC_IDS.forEach(id => {
+    const isOpen = saved ? (saved[id] !== false) : true;
+    const body   = document.getElementById(id + '-body');
+    const title  = document.querySelector(`#${id} .section-title`);
+    if (!body || !title) return;
+    isOpen ? _openSection(body, title, false) : _closeSection(body, title, false);
+  });
+}
+function toggleSection(id) {
+  const body  = document.getElementById(id + '-body');
+  const title = document.querySelector(`#${id} .section-title`);
+  if (!body || !title) return;
+  title.classList.contains('open') ? _closeSection(body, title, true) : _openSection(body, title, true);
+  const state = {};
+  SEC_IDS.forEach(sid => {
+    const t = document.querySelector(`#${sid} .section-title`);
+    state[sid] = t ? t.classList.contains('open') : true;
+  });
+  localStorage.setItem(SEC_STORAGE_KEY, JSON.stringify(state));
+}
+function _openSection(body, title, animate) {
+  title.classList.remove('closed'); title.classList.add('open');
+  body.classList.remove('closed');  body.classList.add('open');
+  body.style.maxHeight = body.scrollHeight + 'px';
+  body.style.paddingTop = ''; body.style.paddingBottom = '';
+  if (animate) {
+    body.addEventListener('transitionend', function onEnd() {
+      body.style.maxHeight = 'none';
+      body.removeEventListener('transitionend', onEnd);
+    });
+  } else {
+    body.style.maxHeight = 'none';
+  }
+}
+function _closeSection(body, title, animate) {
+  title.classList.remove('open'); title.classList.add('closed');
+  body.style.maxHeight = body.scrollHeight + 'px';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    body.classList.remove('open'); body.classList.add('closed');
+    body.style.maxHeight = '0';
+    body.style.paddingTop = '0'; body.style.paddingBottom = '0';
+  }));
+}
+
+// ════════════════════════════════════════════
+//  Log
+// ════════════════════════════════════════════
+const STEP_COLOR = {
+  'DATA Prep':'#60A5FA','STEP1 SO':'#60A5FA','STEP2 생산계획':'#60A5FA','STEP3 재고':'#60A5FA','STEP4 선복':'#60A5FA',
+  'Optimize':'#34D399','STEP5 장입계획':'#34D399',
+  'Result Process':'#FBBF24','STEP6 Template':'#FBBF24','STEP7 INST No.':'#FBBF24','STEP8 완료처리':'#FBBF24'
+};
+function addLog(step, msg, type='ok') {
+  const area = document.getElementById('log-area');
+  const now  = new Date();
+  const ts   = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+  const el   = document.createElement('div');
+  el.className = 'log-line';
+  el.innerHTML = `<span class="log-time">${ts}</span><span class="log-step" style="color:${STEP_COLOR[step]||'#94A3B8'}">[${step}]</span><span class="log-msg ${type}">${msg}</span>`;
+  area.appendChild(el);
+  area.parentElement.scrollTop = area.parentElement.scrollHeight;
+}
+// 버튼 라벨 → STEP API id (1~4, all). 그 외(STEP5~8 등)는 미구현 안내.
+const STEP_API = {
+  'DATA Prep':'all', 'STEP1 SO':'1', 'STEP2 생산계획':'2', 'STEP3 재고':'3', 'STEP4 선복':'4',
+  'Optimize':'5', 'STEP5 장입계획':'5'
+};
+
+function _stepMsg(r) {
+  const s = r.step || '';
+  if (s.startsWith('STEP1')) return `${s}: 신규 ${r.new} · 갱신 ${r.updated} · 삭제확인 ${r.deleted_check} · 지역미등록 ${r.unknown_fdest ?? '-'} (총 ${r.total})`;
+  if (s.startsWith('STEP2')) return `${s}: 매칭 ${r.matched} · 미매칭 ${r.unmatched}`;
+  if (s.startsWith('STEP3')) return `${s}: ${r.models}개 모델 · ${r.matched}행 재고반영`;
+  if (s.startsWith('STEP4')) return `${s}: ${r.bookings}개 부킹 · ${r.matched}행 매칭 (주차일치 ${r.matched_by_week ?? 0}·인접 ${r.matched_by_near ?? 0}) · 선사코드미등록 ${r.unknown_carrier ?? '-'}`;
+  if (s.startsWith('STEP5')) return `${s}: 계획 ${r.planned_orders}건 (생산예정포함 ${r.from_production ?? 0}) · 컨테이너 ${r.containers}개 · 수량 ${r.avg_fill_pct}%/CBM ${r.avg_cbm_fill_pct ?? '-'}% · 혼적 ${r.mixed_containers}개${r.merged_low_fill ? ` · 병합절감 ${r.merged_low_fill}` : ''}`;
+  return JSON.stringify(r);
+}
+
+// STEP 이름 → 해당 Raw 카드 id 매핑 (시각 피드백용)
+const STEP_CARD = {'STEP1 SO':'uc-so','STEP2 생산계획':'uc-prod','STEP3 재고':'uc-stock','STEP4 선복':'uc-book'};
+
+async function runStep(name) {
+  const stepId = STEP_API[name];
+  // 카드 'running' 시각 피드백
+  const cardId = STEP_CARD[name];
+  const cards = name === 'DATA Prep' ? ['uc-so','uc-prod','uc-stock','uc-book'] : (cardId ? [cardId] : []);
+  cards.forEach(id => document.getElementById(id)?.classList.add('running'));
+  const cleanup = () => cards.forEach(id => document.getElementById(id)?.classList.remove('running'));
+  if (!stepId) {                                   // STEP5~8 / Optimize 등 미구현
+    cleanup();
+    addLog(name, `${name} — 아직 구현되지 않은 단계입니다 (현재 STEP 1~4만 동작).`, 'warn');
+    return;
+  }
+  addLog(name, `${name} 실행 요청...`, 'warn');
+  try {
+    const res  = await fetch(`/api/step/${stepId}`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'
+    });
+    const data = await res.json();
+    if (!data.ok) { cleanup(); addLog(name, `실패: ${data.message}`, 'err'); return; }
+    if (stepId === 'all') {
+      data.results.forEach(r => addLog(name, _stepMsg(r), 'ok'));
+      addLog(name, `DATA Prep 완료 — MST ${data.total.toLocaleString()}건 (Raw: ${data.raw_dir})`, 'ok');
+    } else {
+      addLog(name, _stepMsg(data.result) + ` (Raw: ${data.raw_dir})`, 'ok');
+    }
+    await refreshMstFromServer();
+    if (stepId === '5') {                 // STEP5 → 최적화 탭에 컨테이너 결과 표시
+      await loadContainers();
+      document.querySelector('.hdr-nav button:nth-child(2)')?.click();
+    }
+  } catch (e) {
+    addLog(name, 'Flask 서버 미연결 — run.bat(app.py) 실행 후 다시 시도하세요. (오프라인은 샘플 데이터 유지)', 'err');
+    addLog(name, 'CLI 직접 실행: python step_processor.py --date 0519', 'warn');
+  } finally {
+    cleanup();
+  }
+}
+
+// 서버 보관 MST를 가져와 그리드/요약/서브탭 갱신
+async function refreshMstFromServer() {
+  try {
+    const res  = await fetch('/api/mst');
+    const data = await res.json();
+    if (!data.built) return false;
+    setMstRows(data.mst_rows);
+    const sb = document.getElementById('search-box');   if (sb) sb.value = '';
+    const fs = document.getElementById('filter-select'); if (fs) fs.selectedIndex = 0;
+    renderTable();
+    updateSummary();
+    refreshActiveSubview();
+    addLog('SYSTEM', `MST 그리드 갱신 — ${MST_ROWS.length.toLocaleString()}건`, 'ok');
+    return true;
+  } catch (e) { return false; }
+}
+
+// 활성 서브탭(SO/선복/결과) 재렌더
+function refreshActiveSubview() {
+  const active = document.querySelector('.right-tab.active');
+  const id = active ? ((active.getAttribute('onclick') || '').match(/'([^']+)'/) || [])[1] : null;
+  if (id === 'so-view')       renderSoTable('');
+  else if (id === 'booking-view') renderBookingTable('');
+  else if (id === 'result-view')  renderResultTable('');
+}
+
+// ════════════════════════════════════════════
+//  최적화 탭 (STEP5 컨테이너 적재 결과)
+// ════════════════════════════════════════════
+let OPT_CONTAINERS = [];
+let OPT_SELECTED_GNO = null;
+
+async function loadContainers() {
+  try {
+    const res  = await fetch('/api/containers');
+    const data = await res.json();
+    if (!data.built) { OPT_CONTAINERS = []; renderContainers(); return; }
+    OPT_CONTAINERS = data.containers;
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+    const cd = data.summary.case_dist || {};
+    set('opt-cntr',   data.summary.containers.toLocaleString());
+    set('opt-fill',   data.summary.avg_fill + '%');
+    set('opt-cbm',    (data.summary.avg_cbm_fill ?? 0) + '%');
+    set('opt-single', (cd.Single     || 0).toLocaleString());
+    set('opt-case1',  (cd.Case1_CBM  || 0).toLocaleString());
+    set('opt-mixed',  (cd.Case2_Dead || 0).toLocaleString());
+    renderContainers();
+  } catch (e) { OPT_CONTAINERS = []; renderContainers(); }
+}
+
+function _optFiltered() {
+  const q = (document.getElementById('opt-search')?.value || '').toLowerCase().trim();
+  if (!q) return OPT_CONTAINERS;
+  return OPT_CONTAINERS.filter(c => c.fdest.toLowerCase().includes(q) ||
+                                     c.lines.some(l => l.model.toLowerCase().includes(q)));
+}
+
+function renderContainers() {
+  const list = document.getElementById('opt-inst-list');
+  const ct   = document.getElementById('opt-inst-ct');
+  const dt   = document.getElementById('opt-detail');
+  if (!list) return;
+  const items = _optFiltered();
+  if (ct) ct.textContent = items.length.toLocaleString();
+  if (!items.length) {
+    list.innerHTML = `<div class="opt-detail-empty">STEP5 실행 결과가 없거나 검색 조건에 일치하는 항목이 없습니다</div>`;
+    if (dt) dt.innerHTML = `<div class="opt-detail-empty">좌측에서 INST를 선택하세요</div>`;
+    return;
+  }
+  list.innerHTML = items.map(c => {
+    const col = c.fill >= 80 ? '#059669' : c.fill >= 50 ? '#D97706' : '#DC2626';
+    const sel = (c.gno === OPT_SELECTED_GNO) ? ' sel' : '';
+    return `<div class="inst-item${sel}" onclick="selectInst(${c.gno})">
+      <span class="inst-no">G${String(c.gno).padStart(3,'0')}</span>
+      <span class="inst-dest">${c.fdest}</span>
+      <span class="inst-spec">${c.spec}</span>
+      <span class="inst-fill" style="color:${col}">${c.fill}%</span>
+    </div>`;
+  }).join('');
+  const cur = items.find(c => c.gno === OPT_SELECTED_GNO);
+  if (cur) renderInstDetail(cur);
+  else selectInst(items[0].gno);
+}
+
+async function selectInst(gno) {
+  OPT_SELECTED_GNO = gno;
+  document.querySelectorAll('.inst-item').forEach(el => {
+    const m = el.querySelector('.inst-no');
+    const isMe = m && m.textContent === 'G' + String(gno).padStart(3,'0');
+    el.classList.toggle('sel', !!isMe);
+  });
+  const c = OPT_CONTAINERS.find(x => x.gno === gno);
+  if (!c) return;
+  renderInstDetail(c);
+  // 모델 LWH 일괄 조회 후 3D 렌더
+  const models = [...new Set((c.lines || []).map(l => l.model).filter(Boolean))];
+  let dimMap = {};
+  if (models.length) {
+    try {
+      const r = await fetch('/api/ref/dimensions/lookup', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({models})
+      });
+      const data = await r.json();
+      if (data.ok) dimMap = data.dimensions || {};
+    } catch {}
+  }
+  render3D(c, dimMap);
+}
+
+function renderInstDetail(c) {
+  const dt = document.getElementById('opt-detail');
+  if (!dt) return;
+  const col    = c.fill >= 80 ? '#059669' : c.fill >= 50 ? '#D97706' : '#DC2626';
+  const cbmF   = c.cbm_fill ?? 0;
+  const cbmCol = cbmF >= 50 ? '#059669' : cbmF >= 20 ? '#D97706' : '#94A3B8';
+  const CASE_LABEL = {Case1_CBM: 'Case1·CBM', Case2_Dead: 'Case2·Dead', Single: 'Single'};
+  const rows = c.lines.map(l => {
+    const colorHex = '#' + _modelColor(l.model).toString(16).padStart(6, '0');
+    return `<tr>
+      <td style="text-align:center;padding:4px 6px;"><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:${colorHex};border:1px solid rgba(0,0,0,0.35);vertical-align:middle;"></span></td>
+      <td>${l.so}</td><td>${l.item}</td>
+      <td title="${esc(l.model)}">${esc(l.model)}</td>
+      <td class="tdqty">${l.qty.toLocaleString()}</td>
+    </tr>`;
+  }).join('');
+  dt.innerHTML = `
+    <div class="detail-hd">
+      <span class="dt-gno">📦 G${String(c.gno).padStart(3,'0')}</span>
+      <span class="dt-dest">${c.fdest}</span>
+      <span class="dt-tag">${c.spec}</span>
+      ${c.booking ? `<span class="dt-tag">🚢 ${esc(c.booking)}</span>` : ''}
+      ${c.case ? `<span class="dt-tag">${CASE_LABEL[c.case]||c.case}${c.nmodels>1?` · ${c.nmodels}종`:''}</span>` : ''}
+      <span class="dt-fill" style="color:${col}">수량 ${c.fill}% · <span style="color:${cbmCol}">CBM ${cbmF}%</span></span>
+    </div>
+    <table class="detail-tbl">
+      <thead><tr><th style="width:28px">색</th><th>SO No</th><th>Item</th><th>Model</th><th style="text-align:right">수량</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+// ════════════════════════════════════════════
+//  3D 컨테이너 적재 시각화 (Three.js)
+//  - 반투명 컨테이너 wireframe + 모델별 컬러 박스 + OrbitControls + 호버 tooltip
+//  - 박스 배치: 길이 방향으로 frac 비율만큼 순차 배치 (간단 휴리스틱)
+// ════════════════════════════════════════════
+const CNTR_SPEC_DIM = {
+  '40HC':  { L: 12.03, W: 2.35, H: 2.69 },
+  '40FT':  { L: 12.03, W: 2.35, H: 2.39 },
+  '20FT':  { L: 5.90,  W: 2.35, H: 2.39 },
+  '45HC':  { L: 13.56, W: 2.35, H: 2.69 },
+};
+const BOX_PALETTE = [0xEF4444, 0xF59E0B, 0x10B981, 0x3B82F6, 0x8B5CF6,
+                     0xEC4899, 0x14B8A6, 0xF97316, 0x84CC16, 0x06B6D4,
+                     0xA855F7, 0xF43F5E, 0xFACC15, 0x22C55E, 0x6366F1];
+function _modelColor(model){
+  let h = 0;
+  const s = String(model || '');
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i);
+  return BOX_PALETTE[Math.abs(h) % BOX_PALETTE.length];
+}
+
+let SCENE3D = null;
+function _cleanup3D(){
+  if (!SCENE3D) return;
+  try {
+    cancelAnimationFrame(SCENE3D.raf);
+    SCENE3D.renderer.dispose();
+    if (SCENE3D.renderer.domElement && SCENE3D.renderer.domElement.parentNode)
+      SCENE3D.renderer.domElement.parentNode.removeChild(SCENE3D.renderer.domElement);
+    if (SCENE3D.tooltip && SCENE3D.tooltip.parentNode)
+      SCENE3D.tooltip.parentNode.removeChild(SCENE3D.tooltip);
+    if (SCENE3D.statBar && SCENE3D.statBar.parentNode)
+      SCENE3D.statBar.parentNode.removeChild(SCENE3D.statBar);
+    window.removeEventListener('resize', SCENE3D.onResize);
+  } catch(e){}
+  SCENE3D = null;
+}
+
+function render3D(c, dimMap){
+  dimMap = dimMap || {};
+  const host = document.getElementById('opt-3d');
+  if (!host) return;
+  _cleanup3D();
+  if (!window.THREE) {
+    host.innerHTML = `<div class="opt-3d-ph"><div>⚠ Three.js 로드 실패</div><div class="ph-sub">vendor/three/three.min.js 확인</div></div>`;
+    return;
+  }
+  host.innerHTML = '';
+  host.style.position = 'relative';
+
+  const sp = CNTR_SPEC_DIM[c.spec] || CNTR_SPEC_DIM['40HC'];
+  const w  = host.clientWidth || 600;
+  const h  = host.clientHeight || 320;
+
+  // Scene
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0F172A);
+
+  // Camera (비스듬한 정면)
+  const camera = new THREE.PerspectiveCamera(38, w / h, 0.1, 200);
+  camera.position.set(sp.L * 0.9, sp.H * 1.6, sp.W * 3.2);
+
+  // Renderer
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  host.appendChild(renderer.domElement);
+
+  // 조명
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  const dir = new THREE.DirectionalLight(0xffffff, 0.85);
+  dir.position.set(sp.L, sp.H * 3, sp.W * 2);
+  scene.add(dir);
+
+  // 바닥
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(sp.L * 2.2, sp.W * 2.5),
+    new THREE.MeshBasicMaterial({ color: 0x1E293B, transparent: true, opacity: 0.6 })
+  );
+  floor.rotation.x = -Math.PI / 2;
+  scene.add(floor);
+
+  // 컨테이너 wireframe만 — 반투명 외벽은 박스 흐림/depth sort 이슈로 제거
+  const cntrGeo = new THREE.BoxGeometry(sp.L, sp.H, sp.W);
+  const edges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(cntrGeo),
+    new THREE.LineBasicMaterial({ color: 0x93C5FD })
+  );
+  edges.position.set(0, sp.H / 2, 0);
+  scene.add(edges);
+
+  // 화물 박스 — LWH 우선, 없으면 CBM 추정. line별 영역 grid 배치
+  const boxes = [];
+  let regCount = 0, unregCount = 0;
+  const totalUsedFrac = (c.lines || []).reduce((s, l) => s + Math.max(0.005, Number(l.frac) || 0), 0) || 1;
+  let cursor = -sp.L / 2;
+
+  (c.lines || []).forEach(l => {
+    const f = Math.max(0.005, Number(l.frac) || 0);
+    const regionLen = (f / totalUsedFrac) * sp.L;
+    const regionW   = sp.W * 0.96;
+    const regionH   = sp.H * 0.96;
+
+    const dim = dimMap[l.model];
+    let boxL, boxW, boxH, isReg;
+    if (dim && dim.L_mm > 0) {
+      isReg = true;
+      boxL = Math.max(0.1, dim.L_mm / 1000);
+      boxW = Math.max(0.1, dim.W_mm / 1000);
+      boxH = Math.max(0.1, dim.H_mm / 1000);
+      regCount++;
+    } else {
+      isReg = false;
+      // CBM 추정 (Volume 있으면 사용, 없으면 region 부피/qty 역산)
+      const cbmGuess = (dim && dim.Volume_m3) || ((f * sp.L * sp.W * sp.H) / Math.max(1, Number(l.qty) || 1));
+      const s = Math.max(0.2, Math.cbrt(cbmGuess));
+      boxL = boxW = boxH = s;
+      unregCount++;
+    }
+
+    const numX = Math.max(1, Math.floor(regionLen / boxL));
+    const numY = Math.max(1, Math.floor(regionH   / boxH));
+    const numZ = Math.max(1, Math.floor(regionW   / boxW));
+    const cap  = numX * numY * numZ;
+    const show = Math.min(cap, 300);   // 성능 cap
+
+    // 박스 크기는 마스터 LWH 그대로 (변경 금지)
+
+    const color = _modelColor(l.model);
+    const startX = cursor;
+    const startZ = -regionW / 2;
+
+    let idx = 0;
+    for (let iy = 0; iy < numY && idx < show; iy++) {
+      for (let iz = 0; iz < numZ && idx < show; iz++) {
+        for (let ix = 0; ix < numX && idx < show; ix++) {
+          const x = startX + ix * boxL + boxL/2;
+          const y = iy * boxH + boxH/2;
+          const z = startZ + iz * boxW + boxW/2;
+          const box = new THREE.Mesh(
+            new THREE.BoxGeometry(boxL, boxH, boxW),
+            new THREE.MeshStandardMaterial({
+              color,
+              metalness: 0.05, roughness: 0.78,
+            })
+          );
+          box.position.set(x, y, z);
+          box.userData = { line: l, isReg, boxDim: {L: boxL, W: boxW, H: boxH} };
+          scene.add(box);
+          const bedge = new THREE.LineSegments(
+            new THREE.EdgesGeometry(box.geometry),
+            new THREE.LineBasicMaterial({ color: 0x000000, opacity: 0.75, transparent: true })
+          );
+          bedge.position.copy(box.position);
+          scene.add(bedge);
+          boxes.push(box);
+          idx++;
+        }
+      }
+    }
+    // 다음 line은 이전 line 박스 grid의 실제 끝 위치에서 바로 시작 (모델끼리 간격 0)
+    cursor += numX * boxL;
+  });
+
+  // OrbitControls
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.target.set(0, sp.H / 2, 0);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 5;
+  controls.maxDistance = 50;
+  controls.update();
+
+  // Tooltip
+  const tooltip = document.createElement('div');
+  tooltip.style.cssText = 'position:absolute;background:rgba(15,23,42,.92);color:#fff;padding:6px 10px;border-radius:4px;font-size:11px;line-height:1.5;pointer-events:none;display:none;z-index:5;border:1px solid rgba(96,165,250,.4);font-family:inherit;';
+  host.appendChild(tooltip);
+
+  // 통계 바 (좌상단)
+  const statBar = document.createElement('div');
+  statBar.style.cssText = 'position:absolute;top:8px;left:10px;color:#CBD5E1;font-size:11px;line-height:1.6;font-family:inherit;background:rgba(15,23,42,.7);padding:5px 9px;border-radius:4px;border:1px solid rgba(96,165,250,.25);z-index:4;';
+  const dimTotal = regCount + unregCount;
+  const dimPct = dimTotal ? Math.round(regCount * 100 / dimTotal) : 0;
+  statBar.innerHTML = `<b style="color:#fff">📦 G${String(c.gno).padStart(3,'0')}</b>
+    <span style="color:#94A3B8"> · ${c.spec} · ${c.fdest}</span><br>
+    <span style="color:#FCD34D">적재율</span> 수량 ${c.fill}% · CBM ${c.cbm_fill ?? 0}%<br>
+    <span style="color:#A7F3D0">치수</span> ${regCount}/${dimTotal} 등록 (${dimPct}%) <span style="color:#FCD34D">${unregCount?`· 추정 ${unregCount}`:''}</span>`;
+  host.appendChild(statBar);
+
+  // Raycaster
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+  function onMove(e){
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouse.x = ((e.clientX - rect.left) / rect.width)  * 2 - 1;
+    mouse.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    const hit = raycaster.intersectObjects(boxes)[0];
+    if (hit) {
+      const l = hit.object.userData.line;
+      const d = hit.object.userData.boxDim || {L:0,W:0,H:0};
+      const reg = hit.object.userData.isReg;
+      tooltip.innerHTML = `<b>${esc(l.model)}</b><br>
+        SO ${l.so}-${l.item} · 수량 ${l.qty}<br>
+        <span style="color:${reg?'#A7F3D0':'#FCD34D'}">${reg?'✓ 치수 등록':'⚠ CBM 추정'}</span> ${(d.L*1000).toFixed(0)}×${(d.W*1000).toFixed(0)}×${(d.H*1000).toFixed(0)} mm`;
+      tooltip.style.display = 'block';
+      tooltip.style.left = Math.min(rect.width - 240, e.clientX - rect.left + 14) + 'px';
+      tooltip.style.top  = Math.min(rect.height - 80, e.clientY - rect.top + 14) + 'px';
+    } else {
+      tooltip.style.display = 'none';
+    }
+  }
+  renderer.domElement.addEventListener('pointermove', onMove);
+  renderer.domElement.addEventListener('pointerleave', () => tooltip.style.display = 'none');
+
+  // Loop
+  let raf;
+  function loop(){
+    raf = requestAnimationFrame(loop);
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  loop();
+
+  // Resize
+  function onResize(){
+    if (!host.isConnected) return;
+    const nw = host.clientWidth, nh = host.clientHeight;
+    if (nw < 10 || nh < 10) return;
+    camera.aspect = nw / nh;
+    camera.updateProjectionMatrix();
+    renderer.setSize(nw, nh);
+  }
+  window.addEventListener('resize', onResize);
+
+  SCENE3D = { renderer, scene, camera, controls, raf, tooltip, statBar, onResize };
+}
+
+// ════════════════════════════════════════════
+//  운영 대시보드 (결과 출력 탭)
+// ════════════════════════════════════════════
+async function loadDashboard() {
+  const body = document.getElementById('dash-body');
+  const hint = document.getElementById('dash-hint');
+  if (!body) return;
+  body.innerHTML = `<div class="table-empty">로딩 중…</div>`;
+  try {
+    const res = await fetch('/api/dashboard');
+    const d = await res.json();
+    if (!d.built) {
+      body.innerHTML = `<div class="table-empty">${d.message || 'STEP을 먼저 실행하세요.'}</div>`;
+      hint.textContent = '아직 데이터 없음';
+      return;
+    }
+    hint.textContent = `MST ${d.mst.total.toLocaleString()}건 기준 · 갱신: ${new Date().toLocaleTimeString('ko-KR')}`;
+    body.innerHTML = renderDashboard(d);
+  } catch (e) {
+    body.innerHTML = `<div class="table-empty">Flask 서버 미연결 — run.bat 실행 후 다시 시도</div>`;
+  }
+}
+
+function renderDashboard(d) {
+  const mst = d.mst, ex = d.exceptions, cs = d.containers;
+  const fmt = n => (n ?? 0).toLocaleString();
+  const sd = mst.status_dist || {};
+
+  // KPI 카드
+  const kpi = [
+    {label:'MST 전체',  val: fmt(mst.total),                  cls:''},
+    {label:'계획대상',  val: fmt(sd.yellow || 0),             cls:'amber', sub:'yellow'},
+    {label:'계획확정',  val: fmt(sd.pink || 0),               cls:'purple', sub:'pink'},
+    {label:'작업완료',  val: fmt(sd.canary || 0),             cls:'blue', sub:'canary'},
+    {label:'초기/대기', val: fmt(sd.white || 0),              cls:'', sub:'white'},
+  ];
+  if (cs) kpi.push(
+    {label:'컨테이너',     val: fmt(cs.containers),                          cls:'blue'},
+    {label:'평균 적재율(수량)', val: cs.avg_qty_fill + '%',                  cls:'green'},
+    {label:'평균 적재율(CBM)', val: cs.avg_cbm_fill + '%',                   cls:''},
+    {label:'저적재 컨(<50%)', val: fmt(cs.low_fill_count),                   cls: cs.low_fill_count>0 ? 'amber':''},
+  );
+  kpi.push(
+    {label:'미등록 F.Dest',  val: fmt(ex.unknown_fdest_total ?? ex.unknown_fdest.length),
+                              sub: `자동분류 ${fmt(Object.keys(ex.auto_resolved_fdest||{}).length)} · 진짜미상 ${fmt(ex.unknown_fdest.length)}`,
+                              cls: ex.unknown_fdest.length>0 ? 'red' : (Object.keys(ex.auto_resolved_fdest||{}).length>0 ? 'amber' : '')},
+    {label:'미등록 선사',    val: fmt(ex.unknown_carrier.length),  cls: ex.unknown_carrier.length>0 ? 'red':''},
+    {label:'용량 미매칭',    val: fmt(ex.unknown_capacity_total),  cls: ex.unknown_capacity_total>0 ? 'amber':''},
+    {label:'⚠ Critical',      val: fmt(ex.critical_total),          cls: ex.critical_total>0 ? 'red':''},
+  );
+  const kpiHTML = `<div class="kpi-row">${kpi.map(k =>
+    `<div class="kpi-card ${k.cls}"><div class="kpi-label">${k.label}</div><div class="kpi-value">${k.val}</div>${k.sub?`<div class="kpi-sub">${k.sub}</div>`:''}</div>`
+  ).join('')}</div>`;
+
+  // 권역별 분포 (MST)
+  const regionMax = Math.max(1, ...Object.values(mst.region_top));
+  const regionBars = Object.entries(mst.region_top).map(([k,v]) =>
+    `<div class="bar-row"><div class="bar-label" title="${esc(k)}">${esc(k)}</div><div class="bar-track"><div class="bar-fill" style="width:${v/regionMax*100}%"></div></div><div class="bar-val">${fmt(v)}</div></div>`
+  ).join('');
+
+  // F.Dest top 15
+  const fdMax = Math.max(1, ...mst.fdest_top.map(x => x[1]));
+  const fdBars = mst.fdest_top.map(([k,v]) =>
+    `<div class="bar-row"><div class="bar-label">${esc(k)}</div><div class="bar-track"><div class="bar-fill" style="width:${v/fdMax*100}%;background:#7C3AED"></div></div><div class="bar-val">${fmt(v)}</div></div>`
+  ).join('');
+
+  // 컨테이너 권역 분포
+  let cntrRegionHTML = '';
+  if (cs && cs.by_region) {
+    const mx = Math.max(1, ...Object.values(cs.by_region));
+    const bars = Object.entries(cs.by_region).map(([k,v]) =>
+      `<div class="bar-row"><div class="bar-label">${esc(k)}</div><div class="bar-track"><div class="bar-fill" style="width:${v/mx*100}%;background:#059669"></div></div><div class="bar-val">${fmt(v)}</div></div>`
+    ).join('');
+    cntrRegionHTML = `<div class="dash-card"><h3>📦 컨테이너 — 권역별 분포 <span class="ct">${fmt(cs.containers)}컨</span><button class="dl" onclick="downloadDataset('containers','컨테이너 적재')">📤 CSV</button></h3>${bars}</div>`;
+  }
+
+  // 부킹 사용량 (top 10 bookings by container count)
+  let bookingHTML = '';
+  if (cs && cs.booking_top && cs.booking_top.length) {
+    const mx = Math.max(1, ...cs.booking_top.map(b => b.containers));
+    const bars = cs.booking_top.map(b =>
+      `<div class="bar-row"><div class="bar-label" title="${esc(b.booking)}">${esc(b.booking)}</div><div class="bar-track"><div class="bar-fill" style="width:${b.containers/mx*100}%;background:#1D4ED8"></div></div><div class="bar-val">${fmt(b.containers)}컨</div></div>`
+    ).join('');
+    const mixed = cs.mixed_booking_cntrs > 0 ? ` <span class="ct amber">혼합부킹 컨 ${fmt(cs.mixed_booking_cntrs)}</span>` : '';
+    bookingHTML = `<div class="dash-card"><h3>🚢 부킹별 사용량 Top 10 <span class="ct">총 ${fmt(cs.booking_total)}개 부킹</span>${mixed}<button class="dl" onclick="downloadDataset('dashboard_booking_usage','부킹 사용량')">📤 CSV</button></h3>${bars}</div>`;
+  }
+
+  // 예외 칩 목록
+  const chipBlock = (title, items, cls, total, dataset, label) => {
+    const dlBtn = dataset && (total ?? items.length) > 0
+      ? `<button class="dl" onclick="downloadDataset('${dataset}','${label||title}')">📤 CSV</button>` : '';
+    if (!items.length) return `<div class="dash-card"><h3>${title} <span class="ct">0</span>${dlBtn}</h3><div class="table-empty" style="padding:14px;">없음 — 모두 등록됨 ✓</div></div>`;
+    return `<div class="dash-card"><h3>${title} <span class="ct red">${fmt(total ?? items.length)}</span>${dlBtn}</h3><div class="chip-list">${items.map(x=>`<span class="chip ${cls||''}">${esc(x)}</span>`).join('')}${total && total > items.length ? `<span class="chip slate">… 외 ${fmt(total - items.length)}</span>` : ''}</div></div>`;
+  };
+
+  // Critical 표
+  const critRows = ex.critical.map(c => `
+    <tr class="row-critical" onclick="drillToMst('${esc(c.so)}')" title="클릭 → MST 그리드에서 ${esc(c.so)} 찾기">
+    <td>${esc(c.so)}-${esc(c.item)}</td><td><b>${esc(c.model)}</b></td>
+    <td>${esc(c.fdest)}</td><td>${esc(c.rsd)}</td><td>${esc(c.etd)}</td><td>${esc(c.prod)}</td>
+    <td class="num">${fmt(c.short)}</td></tr>`).join('');
+  const critHTML = ex.critical.length
+    ? `<div class="dash-list"><table><thead><tr><th>SO-Item</th><th>Model</th><th>F.Dest</th><th>RSD</th><th>ETD</th><th>생산일</th><th>부족수량</th></tr></thead><tbody>${critRows}</tbody></table></div>${ex.critical_total > ex.critical.length ? `<div class="table-empty" style="padding:8px">… 외 ${fmt(ex.critical_total - ex.critical.length)}건</div>` : ''}`
+    : `<div class="table-empty" style="padding:18px;">없음 — 모두 생산 가능 또는 재고 확보 ✓</div>`;
+
+  // 저적재 표
+  let lowHTML = '';
+  if (cs && cs.low_fill && cs.low_fill.length) {
+    const rows = cs.low_fill.map(c => {
+      const fc = c.qty_fill < 25 ? 'fill-low' : 'fill-mid';
+      return `<tr><td>#${c.gno}</td><td>${esc(c.fdest)}</td><td class="num ${fc}">${c.qty_fill}%</td><td class="num">${c.cbm_fill}%</td><td class="num">${c.nmodels}</td></tr>`;
+    }).join('');
+    lowHTML = `<div class="dash-list"><table><thead><tr><th>CNTR</th><th>F.Dest</th><th>수량%</th><th>CBM%</th><th>모델수</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  } else {
+    lowHTML = `<div class="table-empty" style="padding:18px;">저적재 컨테이너 없음 ✓</div>`;
+  }
+
+  return `${kpiHTML}
+    <div class="dash-cols">
+      <div>
+        <div class="dash-card"><h3>🌍 권역별 분포 (MST) <span class="ct">${fmt(mst.total)}건</span><button class="dl" onclick="downloadDataset('dashboard_region_dist','권역 분포')">📤 CSV</button></h3>${regionBars}</div>
+        <div class="dash-card"><h3>📍 F.Dest Top 15 (MST) <button class="dl" onclick="downloadDataset('dashboard_fdest_top','F.Dest 분포')">📤 CSV</button></h3>${fdBars}</div>
+        ${cntrRegionHTML}
+        ${bookingHTML}
+      </div>
+      <div>
+        <div class="dash-card"><h3>⚠ Critical — 재고부족 + 생산도 ETD 이후 (사람손 필요) <span class="ct red">${fmt(ex.critical_total)}</span><button class="dl" onclick="downloadDataset('dashboard_critical','Critical 주문')">📤 CSV</button></h3>${critHTML}</div>
+        ${(() => {
+          const auto = ex.auto_resolved_fdest || {};
+          const autoCnt = Object.keys(auto).length;
+          const truly = ex.unknown_fdest;
+          const autoBlock = autoCnt ? `<div style="margin-bottom:8px">
+            <div style="font-size:11px;color:#92400E;font-weight:700;margin-bottom:4px">
+              자동분류 가능 ${fmt(autoCnt)}건 (국가코드 폴백)
+              <button class="cc-reset" onclick="downloadFdestSuggestions()" style="margin-left:6px;">📥 보강 CSV</button>
+              <button class="cc-reset" onclick="mergeFdestSuggestions(${autoCnt})" style="margin-left:4px;background:#ECFDF5;color:#059669;border-color:#BBF7D0;">✅ ${fmt(autoCnt)}건 머지</button>
+            </div>
+            <div class="chip-list">${Object.entries(auto).slice(0,40).map(([fd,r])=>`<span class="chip amber" title="${esc(r)}">${esc(fd)}→${esc(r)}</span>`).join('')}${autoCnt>40?`<span class="chip slate">… 외 ${fmt(autoCnt-40)}</span>`:''}</div></div>` : '';
+          const trulyBlock = truly.length ? `<div>
+            <div style="font-size:11px;color:#B91C1C;font-weight:700;margin-bottom:4px">진짜 미상 ${fmt(truly.length)}건 (국가코드도 매칭 X)</div>
+            <div class="chip-list">${truly.map(x=>`<span class="chip">${esc(x)}</span>`).join('')}</div></div>` : `<div class="table-empty" style="padding:8px;">진짜 미상 없음 — 모두 폴백 분류됨 ✓</div>`;
+          return `<div class="dash-card"><h3>🛂 미등록 F.Dest <span class="ct ${truly.length?'red':'amber'}">${fmt((ex.unknown_fdest_total ?? truly.length))}</span><button class="dl" onclick="downloadDataset('dashboard_unknown_fdest','미등록 F.Dest')">📤 CSV</button></h3>${autoBlock}${trulyBlock}</div>`;
+        })()}
+        ${chipBlock('🚢 미등록 선사 (선사코드 매핑 누락)', ex.unknown_carrier, '', null, 'dashboard_unknown_carrier', '미등록 선사')}
+        ${ex.unknown_carrier.length > 0 ? `<div class="dash-card"><h3>➕ 선사 직접 추가 (ref_carrier.csv)</h3>
+          <div class="carrier-form">
+            <input id="cf-short" placeholder="약어 예: KMTC" maxlength="20">
+            <input id="cf-name"  placeholder="선사명">
+            <input id="cf-code"  placeholder="선사코드 예: KR055307" maxlength="20">
+            <button onclick="addCarrier()">추가</button>
+          </div></div>` : ''}
+        ${chipBlock('📐 용량 미매칭 모델 (CBM/기본값 폴백)', ex.unknown_capacity, 'amber', ex.unknown_capacity_total, 'dashboard_unknown_capacity', '용량 미매칭')}
+        <div class="dash-card"><h3>📉 저적재 컨테이너 (<50%) <span class="ct amber">${fmt(cs ? cs.low_fill_count : 0)}</span><button class="dl" onclick="downloadDataset('dashboard_low_fill','저적재 컨테이너')">📤 CSV</button></h3>${lowHTML}</div>
+      </div>
+    </div>`;
+}
+
+// ════════════════════════════════════════════
+//  Raw 폴더 정보·열기 (방식 1: 수동 폴더)
+// ════════════════════════════════════════════
+const RAW_FILE_CARD = {so:'uc-so', prod:'uc-prod', stock:'uc-stock', book:'uc-book'};
+const RAW_FILE_LABEL = {so:'STEP1 · SO', prod:'STEP2 · 생산계획', stock:'STEP3 · 재고', book:'STEP4 · 선복'};
+
+async function loadRawInfo() {
+  try {
+    const d = await (await fetch('/api/raw/info')).json();
+    if (!d.ok) return;
+    const path = document.getElementById('raw-path');
+    const used = document.getElementById('raw-used');
+    if (path) { path.textContent = d.raw_root; path.title = d.raw_root; }
+    if (used) used.textContent = d.used_label
+      ? `${d.used_label}${d.used_label === d.today ? ' (오늘)' : ' (가장 최근)'}`
+      : `${d.today} (폴더 없음 — 만들기 필요)`;
+    // 카드 status 갱신
+    for (const [key, info] of Object.entries(d.files)) {
+      const card = document.getElementById(RAW_FILE_CARD[key]); if (!card) continue;
+      const status = card.querySelector('.uc-status');
+      const label  = card.querySelector('.uc-label');
+      if (info.present) {
+        card.classList.add('loaded'); card.classList.remove('missing');
+        if (status) status.textContent = `${(info.rows ?? '?').toLocaleString?.() ?? info.rows}행 · ${info.size_kb}KB`;
+      } else {
+        card.classList.remove('loaded'); card.classList.add('missing');
+        if (status) status.textContent = '파일 없음';
+      }
+      if (label && RAW_FILE_LABEL[key]) label.textContent = RAW_FILE_LABEL[key];
+    }
+  } catch (e) { /* 오프라인이면 무시 — 샘플 상태 유지 */ }
+}
+
+async function openRawFolder() {
+  try {
+    const d = await (await fetch('/api/raw/open', {method:'POST'})).json();
+    if (d.ok) addLog('SYSTEM', `📁 탐색기에서 폴더 열기: ${d.path}`, 'ok');
+    else addLog('SYSTEM', `폴더 열기 실패: ${d.message}`, 'err');
+  } catch (e) { addLog('SYSTEM', 'Flask 미연결 — 폴더 열기는 서버 필요', 'err'); }
+}
+
+// 통합 데이터셋 다운로드 (Excel BOM CSV)
+function downloadDataset(dataset, label) {
+  const a = document.createElement('a');
+  a.href = `/api/export/${dataset}`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  addLog('SYSTEM', `📤 ${label || dataset} CSV 다운로드`, 'ok');
+}
+
+// ════════════════════════════════════════════
+//  MST 관리 탭 — 기준정보 CRUD
+// ════════════════════════════════════════════
+let currentRefTable = 'fdest';
+let REF_DATA = { fields: [], key: '', rows: [] };
+const REF_LABELS = {fdest:'F.dest → 지역', carrier:'선사 → 코드', country:'국가코드 → 지역', transporter:'운송사'};
+
+function setRefTab(el, table) {
+  document.querySelectorAll('#panel-mst .right-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  currentRefTable = table;
+  document.getElementById('ref-title').textContent = REF_LABELS[table];
+  document.getElementById('ref-search').value = '';
+  loadRefTable(table);
+}
+
+async function loadRefTable(table) {
+  try {
+    const d = await (await fetch('/api/ref/' + table)).json();
+    if (!d.ok) { addLog('SYSTEM', d.message || '로드 실패', 'err'); return; }
+    REF_DATA = d;
+    document.getElementById('ref-count').textContent = `${d.rows.length.toLocaleString()}건`;
+    renderRefAddForm();
+    renderRefTable();
+  } catch (e) { addLog('SYSTEM', 'Flask 미연결', 'err'); }
+}
+
+function renderRefAddForm() {
+  const inputs = REF_DATA.fields.map(f =>
+    `<input id="ref-add-${esc(f)}" placeholder="${esc(f)}${f === REF_DATA.key ? ' (필수)' : ''}">`
+  ).join('');
+  document.getElementById('ref-add-form').innerHTML =
+    `<span class="ref-add-label">➕ 추가</span>${inputs}<button onclick="addRefRow()">추가</button>`;
+}
+
+function renderRefTable() {
+  const q = (document.getElementById('ref-search')?.value || '').toLowerCase().trim();
+  let rows = REF_DATA.rows;
+  if (q) rows = rows.filter(r => REF_DATA.fields.some(f => String(r[f] || '').toLowerCase().includes(q)));
+  const CAP = 300;
+  const head = `<tr>${REF_DATA.fields.map(f => `<th>${esc(f)}</th>`).join('')}<th>삭제</th></tr>`;
+  document.getElementById('ref-thead').innerHTML = head;
+  const body = rows.slice(0, CAP).map(r =>
+    `<tr>${REF_DATA.fields.map(f => `<td>${esc(r[f] || '')}</td>`).join('')}<td><button class="btn-del" onclick="deleteRefRow('${esc(r[REF_DATA.key])}')">삭제</button></td></tr>`
+  ).join('');
+  const more = rows.length > CAP ? `<tr><td colspan="${REF_DATA.fields.length + 1}" class="table-empty">… 외 ${(rows.length - CAP).toLocaleString()}건 (검색으로 좁혀보세요)</td></tr>` : '';
+  const empty = rows.length === 0 ? `<tr><td colspan="${REF_DATA.fields.length + 1}" class="table-empty">${q ? '검색 결과 없음' : '데이터 없음'}</td></tr>` : '';
+  document.getElementById('ref-tbody').innerHTML = body + more + empty;
+}
+
+async function addRefRow() {
+  const body = {};
+  for (const f of REF_DATA.fields) body[f] = document.getElementById('ref-add-' + f).value.trim();
+  if (!body[REF_DATA.key]) { alert(`${REF_DATA.key}는 필수입니다.`); return; }
+  try {
+    const d = await (await fetch('/api/ref/' + currentRefTable, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+    })).json();
+    if (d.ok) {
+      addLog('SYSTEM', `✅ ${currentRefTable} 추가: ${body[REF_DATA.key]}`, 'ok');
+      REF_DATA.fields.forEach(f => document.getElementById('ref-add-' + f).value = '');
+      loadRefTable(currentRefTable);
+    } else { alert(d.message); }
+  } catch (e) { addLog('SYSTEM', 'Flask 미연결', 'err'); }
+}
+
+async function deleteRefRow(key) {
+  if (!confirm(`'${key}' 행을 삭제하시겠습니까?`)) return;
+  try {
+    const d = await (await fetch(`/api/ref/${currentRefTable}/${encodeURIComponent(key)}`, {method:'DELETE'})).json();
+    if (d.ok) {
+      addLog('SYSTEM', `🗑 ${currentRefTable} 삭제: ${key} (잔여 ${d.remaining}건)`, 'ok');
+      loadRefTable(currentRefTable);
+    } else { alert(d.message); }
+  } catch (e) { addLog('SYSTEM', 'Flask 미연결', 'err'); }
+}
+
+// ════════════════════════════════════════════
+//  MST 셀 인라인 편집 (PRESERVED_COLS만)
+// ════════════════════════════════════════════
+function startEditCell(td, ri, col) {
+  if (td.querySelector('input.cell-edit')) return;   // 이미 편집 중
+  const oldVal = String(MST_ROWS[ri][col] ?? '');
+  const oldHtml = td.innerHTML;
+  const input = document.createElement('input');
+  input.className = 'cell-edit';
+  input.value = oldVal;
+  td.innerHTML = '';
+  td.appendChild(input);
+  input.focus(); input.select();
+  let done = false;
+  const finish = async (save) => {
+    if (done) return; done = true;
+    if (save && input.value !== oldVal) {
+      const ok = await saveCellEdit(ri, col, input.value);
+      if (!ok) { td.innerHTML = oldHtml; return; }
+      // 메모리 반영 + 셀 표시 갱신 (전체 재렌더 안 함 — 깜빡임 방지)
+      MST_ROWS[ri][col] = input.value;
+      MST_DATA[ri] = deriveMstRow(MST_ROWS[ri]);
+      td.innerHTML = mstCell(MST_HEADER[col], input.value);
+    } else {
+      td.innerHTML = oldHtml;
+    }
+  };
+  input.addEventListener('blur', () => finish(true));
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+  });
+}
+
+async function saveCellEdit(ri, col, value) {
+  try {
+    const r = await fetch('/api/mst/row', {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ri, col, value})
+    });
+    const d = await r.json();
+    if (d.ok) {
+      addLog('SYSTEM', `✏️ 셀 갱신 [행${ri} · ${MST_HEADER[col]}] = ${value || '(빈값)'}`, 'ok');
+      return true;
+    }
+    alert(d.message); return false;
+  } catch (e) {
+    addLog('SYSTEM','Flask 미연결 — 편집 저장 실패','err');
+    return false;
+  }
+}
+
+// 실행 로그 패널 접기/펴기 (localStorage 상태 유지)
+const LOG_COLLAPSE_KEY = 'log_panel_collapsed';
+function toggleLogPanel() {
+  const lp = document.getElementById('log-panel');
+  if (!lp) return;
+  lp.classList.toggle('collapsed');
+  localStorage.setItem(LOG_COLLAPSE_KEY, lp.classList.contains('collapsed') ? '1' : '0');
+}
+// 접힘 상태: 패널 어디든 클릭으로 펴짐 / 펼침 상태: 제목 영역 클릭만 접힘
+function handleLogClick(e) {
+  const lp = document.getElementById('log-panel');
+  if (!lp) return;
+  if (lp.classList.contains('collapsed')) {
+    toggleLogPanel();
+  } else if (e.target.closest('.log-title')) {
+    toggleLogPanel();
+  }
+}
+function restoreLogPanelState() {
+  if (localStorage.getItem(LOG_COLLAPSE_KEY) === '1') {
+    document.getElementById('log-panel')?.classList.add('collapsed');
+  }
+}
+
+// 대시보드 Critical 행 → MST 그리드 드릴다운
+function drillToMst(soNo) {
+  // 1) DATA 준비 탭 + MST 현황 서브탭 전환
+  document.querySelector('.hdr-nav button:nth-child(1)')?.click();
+  setRTab(document.querySelector(".right-tab[onclick*='mst-view']"), 'mst-view');
+  // 2) 검색박스에 SO 채우고 필터 적용
+  const sb = document.getElementById('search-box');
+  if (sb) { sb.value = soNo; }
+  applyFilters();
+  // 3) 첫 매칭 행으로 스크롤 + 잠깐 강조 (applyFilters 직후 tbody 새로 그려진 상태)
+  const tr = document.querySelector('#mst-tbody tr');
+  if (tr) {
+    tr.scrollIntoView({behavior:'smooth', block:'center'});
+    tr.classList.add('row-flash');
+    setTimeout(() => tr.classList.remove('row-flash'), 2200);
+  }
+  addLog('SYSTEM', `🔍 MST 그리드에서 ${soNo} 찾는 중`, 'ok');
+}
+
+// 미등록 F.Dest 자동분류 결과를 ref_fdest.csv에 1-click 머지
+async function mergeFdestSuggestions(autoCnt) {
+  if (!confirm(`자동분류된 ${autoCnt}건의 F.Dest를 ref_fdest.csv에 머지하시겠습니까?`)) return;
+  try {
+    const r = await fetch('/api/ref/fdest/auto_merge', {method:'POST'});
+    const d = await r.json();
+    if (d.ok) {
+      addLog('SYSTEM', `✅ F.Dest ${d.added}건 ref_fdest.csv 머지 완료`, 'ok');
+      loadDashboard();
+    } else addLog('SYSTEM', `머지 실패: ${d.message}`, 'err');
+  } catch (e) { addLog('SYSTEM', 'Flask 미연결 — 머지는 서버 필요', 'err'); }
+}
+
+// 선사 추가 폼
+async function addCarrier() {
+  const short = document.getElementById('cf-short').value.trim().toUpperCase();
+  const name  = document.getElementById('cf-name').value.trim();
+  const code  = document.getElementById('cf-code').value.trim();
+  if (!short || !code) { alert('선사 약어와 선사코드는 필수입니다'); return; }
+  try {
+    const r = await fetch('/api/ref/carrier', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({"선사": short, "선사명": name, "선사코드": code})
+    });
+    const d = await r.json();
+    if (d.ok) {
+      addLog('SYSTEM', `✅ 선사 추가: ${short} / ${name||'-'} / ${code}`, 'ok');
+      ['cf-short','cf-name','cf-code'].forEach(id => document.getElementById(id).value = '');
+      loadDashboard();
+    } else { alert(d.message); }
+  } catch (e) { addLog('SYSTEM', 'Flask 미연결', 'err'); }
+}
+
+// ref_fdest 보강 제안 CSV 다운로드
+async function downloadFdestSuggestions() {
+  try {
+    const a = document.createElement('a');
+    a.href = '/api/ref/fdest_suggestions';
+    a.download = 'ref_fdest_suggested.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    addLog('SYSTEM', 'ref_fdest 보강 제안 CSV 다운로드 — data/ref_fdest.csv에 머지하세요', 'ok');
+  } catch (e) { addLog('SYSTEM', 'Flask 미연결', 'err'); }
+}
+
+// 장입계획 결과 → Templete CSV 다운로드
+async function downloadResultTemplate() {
+  try {
+    // ZWMRE50110 양식 그대로 .xlsx로 다운로드
+    const r = await fetch('/api/template/xlsx');
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({message:'알 수 없는 오류'}));
+      addLog('SYSTEM', err.message || 'STEP5(장입계획)를 먼저 실행하세요.', 'warn'); return;
+    }
+    const blob = await r.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `ZWMRE50110_${new Date().toISOString().slice(0,10).replace(/-/g,'')}.xlsx`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
+    addLog('SYSTEM', '📤 ZWMRE50110 양식(.xlsx) 다운로드 완료', 'ok');
+  } catch (e) { addLog('SYSTEM', 'Flask 미연결 — Excel 출력은 서버 실행 필요', 'err'); }
+}
+
+// ════════════════════════════════════════════
+//  모델 치수(LWH) Import + 통계
+// ════════════════════════════════════════════
+async function importDimensions() {
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = '.xlsx,.xls';
+  inp.multiple = true;
+  inp.onchange = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    addLog('SYSTEM', `📐 모델 치수 import 시작 — 파일 ${files.length}개 (대용량 시 1분+ 소요)`, 'info');
+    const fd = new FormData();
+    files.forEach(f => fd.append('files', f));
+    try {
+      const res = await fetch('/api/ref/dimensions/import', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!data.ok) {
+        addLog('SYSTEM', `❌ Import 실패: ${data.message || '알 수 없는 오류'}`, 'err');
+        return;
+      }
+      const s = data.stats;
+      addLog('SYSTEM',
+        `✅ 모델 치수 — 신규 ${s.inserted.toLocaleString()} · 보강 ${s.updated.toLocaleString()} · skip ${s.skipped.toLocaleString()} (${s.total.toLocaleString()}건 처리)`,
+        'ok');
+      (s.files || []).forEach(f => {
+        addLog('SYSTEM', `  · [${f.source}] 신규 ${f.inserted.toLocaleString()} / 보강 ${f.updated.toLocaleString()}`, 'info');
+      });
+      loadDimStats();
+    } catch (err) {
+      addLog('SYSTEM', `❌ Import 에러: ${err.message || err}`, 'err');
+    }
+  };
+  inp.click();
+}
+
+async function loadDimStats() {
+  try {
+    const r = await fetch('/api/ref/dimensions/stats');
+    const d = await r.json();
+    const el = document.getElementById('dim-total-count');
+    if (el) el.textContent = (d.total || 0).toLocaleString();
+  } catch {}
+}
+window.addEventListener('DOMContentLoaded', loadDimStats);
+
+// ════════════════════════════════════════════
+//  BA 태그 파라미터 관리
+// ════════════════════════════════════════════
+const BA_STORAGE_KEY = 'crawl_ba_codes';
+let baCodes = [];
+function loadBaCodes() {
+  try { const s = localStorage.getItem(BA_STORAGE_KEY); baCodes = s ? JSON.parse(s) : ['DFZ']; }
+  catch { baCodes = ['DFZ']; }
+  renderBaTags();
+}
+function saveBaCodes() { localStorage.setItem(BA_STORAGE_KEY, JSON.stringify(baCodes)); updateBaHint(); }
+function addBaCode(raw) {
+  const codes = raw.split(/[,;\s]+/).map(s => s.trim().toUpperCase()).filter(s => s.length > 0);
+  let added = 0;
+  codes.forEach(code => { if (code && !baCodes.includes(code)) { baCodes.push(code); added++; } });
+  if (added > 0) { saveBaCodes(); renderBaTags(); }
+  return added;
+}
+function removeBaCode(code) { baCodes = baCodes.filter(c => c !== code); saveBaCodes(); renderBaTags(); }
+function renderBaTags() {
+  const wrap  = document.getElementById('ba-tag-wrap');
+  const input = document.getElementById('ba-input');
+  wrap.querySelectorAll('.ba-tag').forEach(el => el.remove());
+  baCodes.forEach(code => {
+    const chip = document.createElement('span');
+    chip.className = 'ba-tag';
+    chip.innerHTML = `${code}<button class="tag-del" onclick="removeBaCode('${code}')" title="제거">×</button>`;
+    wrap.insertBefore(chip, input);
+  });
+  updateBaHint();
+}
+function updateBaHint() {
+  const hint = document.getElementById('ba-hint-text');
+  if (baCodes.length === 0) { hint.textContent = 'BA 코드를 1개 이상 입력하세요.'; hint.style.color = '#F87171'; }
+  else if (baCodes.length === 1) { hint.textContent = `BA [${baCodes[0]}] 1건 크롤링 예정`; hint.style.color = '#94A3B8'; }
+  else { hint.textContent = `BA ${baCodes.length}건 순차 크롤링 — ${baCodes.join(', ')}`; hint.style.color = '#60A5FA'; }
+}
+document.getElementById('ba-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' || e.key === ',' || e.key === 'Tab') {
+    e.preventDefault();
+    const val = this.value.trim();
+    if (val && addBaCode(val) > 0) this.value = '';
+  } else if (e.key === 'Backspace' && this.value === '' && baCodes.length > 0) {
+    removeBaCode(baCodes[baCodes.length - 1]);
+  }
+});
+document.getElementById('ba-input').addEventListener('blur', function() {
+  const val = this.value.trim();
+  if (val) { addBaCode(val); this.value = ''; }
+});
+document.getElementById('ba-input').addEventListener('paste', function(e) {
+  e.preventDefault();
+  const text = (e.clipboardData || window.clipboardData).getData('text');
+  addBaCode(text); this.value = '';
+});
+
+// ════════════════════════════════════════════
+//  크롤링 실행
+// ════════════════════════════════════════════
+let crawlRunning = false;
+function setCrawlUI(state) {
+  const bar = document.getElementById('crawl-status-bar');
+  const icon = document.getElementById('crawl-status-icon');
+  const text = document.getElementById('crawl-status-text');
+  const btn  = document.getElementById('btn-crawl');
+  const bIcon= document.getElementById('crawl-btn-icon');
+  const bText= document.getElementById('crawl-btn-text');
+  bar.className = `crawl-status ${state}`;
+  if (state === 'idle')    { icon.textContent='○'; text.textContent='대기 중'; bIcon.textContent='⬇'; bText.textContent='포털 데이터 크롤링 시작'; btn.disabled=false; crawlRunning=false; }
+  else if (state === 'running') { icon.textContent='●'; text.textContent=`크롤링 중... (BA: ${baCodes.join(', ')})`; bIcon.textContent='⏹'; bText.textContent='실행 중...'; btn.disabled=true; crawlRunning=true; }
+  else if (state === 'done')   { icon.textContent='✓'; text.textContent=`완료 — ${new Date().toLocaleTimeString('ko-KR')}`; bIcon.textContent='⬇'; bText.textContent='포털 데이터 크롤링 시작'; btn.disabled=false; crawlRunning=false; }
+  else if (state === 'error')  { icon.textContent='✗'; text.textContent='오류 발생 — 로그 확인'; bIcon.textContent='⬇'; bText.textContent='다시 시도'; btn.disabled=false; crawlRunning=false; }
+}
+async function startCrawl() {
+  if (crawlRunning) return;
+  if (baCodes.length === 0) { alert('BA 코드를 1개 이상 입력하세요.'); document.getElementById('ba-input').focus(); return; }
+  setCrawlUI('running');
+  addLog('CRAWL', `크롤링 시작 — BA: [${baCodes.join(', ')}]`, 'warn');
+  try {
+    const res = await fetch('/api/crawl', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ba_codes:baCodes}) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    addLog('CRAWL', data.message, 'warn');
+    pollCrawlStatus();
+  } catch(e) {
+    if (e.message.includes('Failed to fetch') || e.message.includes('NetworkError') || e.message.includes('fetch')) {
+      addLog('CRAWL', 'Flask 서버 미연결. app.py를 먼저 실행하세요.', 'err');
+      addLog('CRAWL', `CLI 직접 실행: python crawlers/run_all_crawlers.py --ba ${baCodes.join(' --ba ')}`, 'warn');
+      setCrawlUI('error');
+    } else {
+      addLog('CRAWL', `오류: ${e.message}`, 'err');
+      setCrawlUI('error');
+    }
+  }
+}
+let _pollTimer = null;
+let _lastLogCount = 0;
+function pollCrawlStatus() { if (_pollTimer) clearTimeout(_pollTimer); _lastLogCount = 0; _doPoll(); }
+async function _doPoll() {
+  try {
+    const res  = await fetch('/api/crawl/status');
+    const data = await res.json();
+    const newLogs = data.logs.slice(_lastLogCount);
+    newLogs.forEach(entry => { const type = entry.level==='ok'?'ok':entry.level==='error'?'err':'warn'; addLog('CRAWL', entry.msg, type); });
+    _lastLogCount = data.logs.length;
+    if (data.running) {
+      _pollTimer = setTimeout(_doPoll, 1000);
+    } else {
+      const result = data.result;
+      if (result && result.ok) { addLog('CRAWL', `완료: ${result.message}`, 'ok'); setCrawlUI('done'); }
+      else { addLog('CRAWL', `오류: ${result ? result.message : '알 수 없는 오류'}`, 'err'); setCrawlUI('error'); }
+    }
+  } catch { addLog('CRAWL', '서버 응답 없음 — polling 중단', 'err'); setCrawlUI('error'); }
+}
+
+// ── MST 검색/필터 이벤트 바인딩 ──
+document.getElementById('search-box').addEventListener('input', applyFilters);
+document.getElementById('filter-select').addEventListener('change', applyFilters);
+
+// ── 요약바 갱신 (실제 데이터 기준) ──
+function updateSummary() {
+  const c = {white:0, yellow:0, pink:0, canary:0};
+  MST_ROWS.forEach(r => { const s = statusOf(r); if (s in c) c[s]++; });
+  const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v.toLocaleString(); };
+  set('sum-total', MST_ROWS.length);
+  set('sum-white', c.white);  set('sum-yellow', c.yellow);
+  set('sum-pink',  c.pink);   set('sum-canary', c.canary);
+  return c;
+}
+
+// ── Init ──
+loadLayout();          // 저장된 컬럼 순서/표시 복원
+renderTable();
+const _cnt = updateSummary();
+initSidebar();
+initSections();
+loadBaCodes();
+loadDeployInfo();
+loadRawInfo();         // Raw 폴더 경로/파일 상태 (방식 1)
+restoreLogPanelState();
+refreshMstFromServer();   // 영속 MST 자동 로드 (mst_current.json)
+addLog('SYSTEM', '시스템 초기화 완료 — 키친 수출 표준 업무 master(LSP) MST 기준.', 'ok');
+addLog('SYSTEM', `MST ${MST_ROWS.length}건 로드 (전체 42컬럼 표시)`, 'ok');
+addLog('SYSTEM', `상태 — 초기 ${_cnt.white} / 계획대상 ${_cnt.yellow} / 계획확정 ${_cnt.pink} / 작업완료 ${_cnt.canary}`, 'ok');
+</script>
+</body>
+</html>
